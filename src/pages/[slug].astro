@@ -1,0 +1,41 @@
+---
+import Base from '../layouts/Base.astro';
+import { getPages } from '../lib/contentful';
+import type { Page } from '../types/contentful';
+
+export async function getStaticPaths() {
+  try {
+    const pagesResponse = await getPages({ limit: 1000 });
+    return pagesResponse.items.map((page: Page) => ({
+      params: { slug: page.fields.slug },
+      props: { page },
+    }));
+  } catch (error) {
+    console.error('Error generating static paths for pages:', error);
+    return [];
+  }
+}
+
+export interface Props {
+  page: Page;
+}
+
+const { page } = Astro.props;
+---
+
+<Base title={page.fields.title}>
+  <div class="max-w-4xl mx-auto px-4 py-12">
+    <h1 class="text-4xl font-bold text-gray-900 mb-8">
+      {page.fields.title}
+    </h1>
+    
+    <div class="prose prose-lg max-w-none">
+      <!-- Content will be rendered here when you add a rich text renderer -->
+      <p class="text-gray-600">
+        This is a placeholder for the page content. 
+        Add a rich text renderer to display Contentful's rich text content.
+      </p>
+    </div>
+  </div>
+</Base>
+

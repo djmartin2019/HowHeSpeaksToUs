@@ -1,0 +1,251 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getBlogPosts, formatDate, getAssetUrl, resolveAsset } from '../../lib/contentful';
+
+const url = new URL(Astro.request.url);
+const page = parseInt(url.searchParams.get('page') || '1');
+const tagParam = url.searchParams.get('tag') || '';
+const tags = tagParam ? tagParam.split(',').map(t => t.trim()).filter(t => t) : [];
+const limit = 9;
+const skip = (page - 1) * limit;
+
+let postsResponse: any = { items: [], total: 0, includes: {} };
+try {
+  const q: any = { limit, skip };
+  if (tags.length > 0) {
+    // For multiple tags, we'll fetch all posts and filter client-side
+    // This is because Contentful's API doesn't support OR operations easily
+    q.limit = 1000; // Get all posts for client-side filtering
+  }
+  postsResponse = await getBlogPosts(q);
+} catch (e) {
+  console.error('Error fetching blog posts:', e);
+}
+
+const items: any[] = Array.isArray(postsResponse.items) ? postsResponse.items : [];
+const includes: any = postsResponse?.includes ?? {};
+
+// ✅ keep only real entries with title & slug
+const posts = items
+  .filter((it) => it?.sys?.type === 'Entry' && it?.fields && it.fields.title && it.fields.slug)
+  .map((it) => ({
+    ...it,
+    featuredResolved: resolveAsset(it.fields.featuredImage, includes) // may be null
+  }));
+
+// show what's being skipped, once
+const skipped = items.filter((it) => !(it?.sys?.type === 'Entry' && it?.fields?.title && it?.fields?.slug));
+if (skipped.length) {
+  console.warn('Skipped records (missing fields/title/slug):',
+    skipped.map((s) => ({ id: s?.sys?.id, type: s?.sys?.type, hasFields: !!s?.fields })));
+}
+
+const totalPosts: number = Number(postsResponse?.total ?? posts.length);
+const totalPages = Math.max(1, Math.ceil(totalPosts / limit));
+const hasNextPage = page < totalPages;
+const hasPrevPage = page > 1;
+
+// tags (guarded)
+let allTags: string[] = [];
+try {
+  const all = await getBlogPosts({ limit: 1000 });
+  const set = new Set<string>();
+  (all.items ?? []).forEach((p: any) => (p?.fields?.tags ?? []).forEach((t: string) => set.add(t)));
+  allTags = Array.from(set).sort();
+} catch (e) {
+  console.error('Error fetching tags:', e);
+  }
+---
+
+<Base
+  title="Blog - Your Company"
+  description="Read our latest articles, tutorials, and insights on web development, content management, and more."
+  canonical={`${Astro.url.origin}/blog`}
+>
+  <!-- Header -->
+  <section class="bg-white border-b border-gray-200 py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center">
+        <h1 class="text-4xl font-bold text-gray-900 mb-4">Our Blog</h1>
+        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+          Insights, tutorials, and thoughts on building modern, content-driven websites.
+        </p>
+      </div>
+
+      <!-- Tag Filtering -->
+      {allTags.length > 0 && (
+        <div class="mt-8">
+          <div class="flex flex-wrap justify-center gap-2" id="tag-filter-container">
+            <button
+              type="button"
+              class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-primary-600 text-white"
+              data-tag="all"
+              id="tag-all"
+            >
+              All Posts
+            </button>
+            {allTags.map((tagName) => (
+              <button
+                type="button"
+                class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
+                data-tag={tagName}
+                id={`tag-${tagName}`}
+              >
+                {tagName}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- Blog Posts Grid -->
+  <section class="py-16 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {posts.length > 0 ? (
+        <>
+          <!-- Results count -->
+          <div class="mb-8">
+            <p class="text-gray-600">
+              {tags.length > 0 
+                ? `Showing posts tagged with "${tags.join('", "')}"` 
+                : 'Showing all posts'
+              }
+              ({totalPosts} total)
+            </p>
+          </div>
+
+          <!-- Posts Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="posts-grid">
+{posts.map((post) => (
+  <article 
+    class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 post-item"
+    data-tags={post?.fields?.tags?.join(',') || ''}
+  >
+    {post.featuredResolved && (
+      <div class="w-full h-48 overflow-hidden">
+        <img
+          src={getAssetUrl(post.featuredResolved, 800, 450)}
+          alt={post.featuredResolved?.fields?.title ?? post.fields.title}
+          class="w-full h-48 object-cover"
+          loading="lazy"
+          decoding="async"
+          width="800"
+          height="450"
+          fetchpriority="low"
+        />
+      </div>
+    )}
+    <div class="p-6">
+      <div class="flex items-center text-sm text-gray-500 mb-2">
+        <time datetime={post?.fields?.publishDate}>
+          {formatDate(post?.fields?.publishDate ?? new Date().toISOString())}
+        </time>
+        {post?.fields?.author && (
+          <>
+            <span class="mx-2">•</span>
+            <span>{post.fields.author}</span>
+          </>
+        )}
+      </div>
+      <h2 class="text-xl font-semibold text-gray-900 mb-2">
+        <a href={`/blog/${post?.fields?.slug}`} class="hover:text-primary-600 transition-colors">
+          {post?.fields?.title ?? '(Untitled)'}
+        </a>
+      </h2>
+      {post?.fields?.excerpt && (
+        <p class="text-gray-600 mb-4 line-clamp-3">
+          {post.fields.excerpt}
+        </p>
+      )}
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <a
+          href={`/blog/${post?.fields?.slug}`}
+          class="text-primary-600 hover:text-primary-700 font-medium transition-colors self-start"
+        >
+          Read more →
+        </a>
+        {!!(post?.fields?.tags?.length) && (
+          <div class="flex flex-wrap gap-1">
+            {post.fields.tags.slice(0, 2).map((tagName: string) => (
+              <span class="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full whitespace-nowrap">
+                {tagName}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </article>
+))}
+          </div>
+
+          <!-- Pagination -->
+          {totalPages > 1 && (
+            <div class="mt-16 flex justify-center">
+              <nav class="flex items-center space-x-2">
+                {hasPrevPage && (
+            <a
+              href={`/blog?page=${page - 1}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
+              class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Previous
+            </a>
+                )}
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <a
+                    href={`/blog?page=${pageNum}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
+                    class={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      pageNum === page
+                        ? 'bg-primary-600 text-white'
+                        : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </a>
+                ))}
+
+                {hasNextPage && (
+                  <a
+                    href={`/blog?page=${page + 1}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
+                    class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    Next
+                  </a>
+                )}
+              </nav>
+            </div>
+          )}
+        </>
+      ) : (
+        <div class="text-center py-16">
+          <div class="mx-auto w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-6">
+            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">No posts found</h3>
+          <p class="text-gray-600 mb-6">
+            {tags.length > 0
+              ? `No posts found with the tags "${tags.join('", "')}".`
+              : 'No blog posts available at the moment.'
+            }
+          </p>
+          {tags.length > 0 && (
+            <a
+              href="/blog"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+            >
+              View All Posts
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  </section>
+</Base>
+
+<!-- Tag filtering script for Cloudflare Pages compatibility -->
+<script src="/js/tag-filter.js" defer></script>
