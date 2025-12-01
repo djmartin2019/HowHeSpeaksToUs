@@ -2,14 +2,69 @@
 import Base from '../../layouts/Base.astro';
 import { getBlogPosts, getAssetUrl, resolveAsset } from '../../lib/contentful';
 import { generateBreadcrumbStructuredData } from '../../lib/seo';
+import { formatDate } from '../../lib/contentful';
+import { renderRichText } from '../../lib/rich-text-renderer';
+import { BLOCKS } from '@contentful/rich-text-types';
 import type { BlogPost } from '../../types/contentful';
 
 export async function getStaticPaths() {
   try {
     const postsResponse = await getBlogPosts({ limit: 1000 });
+    
     // Filter posts to ensure they have the required structure
+    // Contentful Delivery API typically returns fields directly (not nested by locale)
     const validPosts = (postsResponse.items || [])
-      .filter((post: any) => post?.sys?.type === 'Entry' && post?.fields && post.fields.title && post.fields.slug);
+      .filter((post: any) => {
+        if (post?.sys?.type !== 'Entry' || !post?.fields) return false;
+        
+        // Handle both direct field access and locale-nested fields
+        const title = post.fields.title || 
+          (typeof post.fields.title === 'object' ? post.fields.title['en-US'] || post.fields.title['en'] : null);
+        const slug = post.fields.slug || 
+          (typeof post.fields.slug === 'object' ? post.fields.slug['en-US'] || post.fields.slug['en'] : null);
+        
+        return !!(title && slug);
+      })
+      .map((post: any) => {
+        // Normalize field access (handle locale nesting if present)
+        const normalizeField = (field: any): any => {
+          if (!field) return undefined;
+          if (typeof field === 'object' && !Array.isArray(field) && !field.sys) {
+            // Likely locale-nested
+            return field['en-US'] || field['en'] || Object.values(field)[0];
+          }
+          return field;
+        };
+        
+        return {
+          ...post,
+          fields: {
+            ...post.fields,
+            title: String(normalizeField(post.fields.title) || post.fields.title || ''),
+            slug: String(normalizeField(post.fields.slug) || post.fields.slug || ''),
+            excerpt: normalizeField(post.fields.excerpt) || post.fields.excerpt,
+            content: normalizeField(post.fields.content) || post.fields.content,
+            author: normalizeField(post.fields.author) || post.fields.author,
+            publishDate: normalizeField(post.fields.publishDate) || post.fields.publishDate,
+            tags: post.fields.tags || [],
+            featuredImage: post.fields.featuredImage,
+          }
+        };
+      });
+    
+    // Debug: Log all slugs being generated
+    const slugs = validPosts.map((post: any) => post.fields.slug);
+    console.log('📝 Generated blog post slugs:', slugs);
+    console.log('📊 Total valid posts:', validPosts.length);
+    
+    // Log first post structure for debugging
+    if (validPosts.length > 0) {
+      console.log('📄 Sample post:', {
+        title: validPosts[0].fields.title,
+        slug: validPosts[0].fields.slug,
+        id: validPosts[0].sys.id
+      });
+    }
     
     return validPosts.map((post: BlogPost) => ({
       params: { slug: post.fields.slug },
@@ -49,6 +104,38 @@ const readingTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words per mi
 // Get category from tags (use first tag as category)
 const category = post.fields.tags?.[0] || 'General';
 
+// Render the content (rich text or plain text)
+let contentHtml = '';
+try {
+  if (post?.fields?.content) {
+    contentHtml = renderRichText(post.fields.content, { 
+      renderNode: {
+        // Handle embedded assets in rich text
+        [BLOCKS.EMBEDDED_ASSET]: (node: any) => {
+          const asset = node.data?.target;
+          if (asset) {
+            // Try to resolve from includes if it's a link
+            const resolvedAsset = resolveAsset(asset, includes) || asset;
+            if (resolvedAsset?.fields?.file?.url) {
+              const imageUrl = getAssetUrl(resolvedAsset, 1200, 800);
+              const alt = resolvedAsset.fields.title || '';
+              return `<img src="${imageUrl}" alt="${alt}" class="w-full h-auto my-6" loading="lazy" />`;
+            }
+          }
+          return '';
+        }
+      }
+    });
+  }
+} catch (error) {
+  console.error('Error rendering blog post content:', error);
+  // Fallback: show raw content or error message
+  contentHtml = `<div class="p-4 bg-red-50 border border-red-200 rounded">
+    <p class="text-red-800">Error rendering content. Please check the console for details.</p>
+    <pre class="mt-2 text-xs text-red-600 overflow-auto">${String(error)}</pre>
+  </div>`;
+}
+
 // Generate breadcrumb structured data
 const breadcrumbItems = [
   { name: 'Home', url: Astro.url.origin },
@@ -80,84 +167,103 @@ try {
   image={featuredImage}
   type="article"
   publishedTime={post.fields.publishDate}
-  modifiedTime={post.sys.updatedAt || post.fields.publishDate}
+  modifiedTime={(post.sys as any).updatedAt || post.fields.publishDate}
   author={post.fields.author}
   tags={post.fields.tags}
   readingTime={readingTime}
   wordCount={wordCount}
   category={category}
+  hideNav={true}
 >
   <!-- Breadcrumb Structured Data -->
   <script type="application/ld+json" set:html={JSON.stringify(breadcrumbStructuredData)} />
 
   <article class="bg-white">
-    <!-- Breadcrumb Navigation -->
-    <nav class="bg-gray-50 border-b border-gray-200" aria-label="Breadcrumb">
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <ol class="flex items-center space-x-2 text-sm">
-          <li>
-            <a href="/" class="text-gray-500 hover:text-gray-700 transition-colors">Home</a>
-          </li>
-          <li>
-            <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-            </svg>
-          </li>
-          <li>
-            <a href="/blog" class="text-gray-500 hover:text-gray-700 transition-colors">Blog</a>
-          </li>
-          <li>
-            <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-            </svg>
-          </li>
-          <li>
-            <span class="text-gray-900 font-medium" aria-current="page">
-              {post.fields.title}
-            </span>
-          </li>
-        </ol>
+    <!-- Custom Navbar for Blog Posts (replaces default navbar) -->
+    <nav class="bg-black text-white" role="navigation" aria-label="Blog navigation">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16 md:h-20">
+          <!-- Breadcrumb on the left -->
+          <div class="flex items-center">
+            <ol class="flex items-center space-x-2 text-sm">
+              <li>
+                <a href="/" class="hover:text-gray-300 transition-colors">Home</a>
+              </li>
+              <li>
+                <span class="mx-2">></span>
+              </li>
+              <li>
+                <a href="/blog" class="hover:text-gray-300 transition-colors">Blog</a>
+              </li>
+              <li>
+                <span class="mx-2">></span>
+              </li>
+              <li>
+                <span class="font-medium" aria-current="page">
+                  {post.fields.title}
+                </span>
+              </li>
+            </ol>
+          </div>
+          
+          <!-- Navigation links on the right -->
+          <div class="hidden md:flex items-center space-x-6 lg:space-x-8">
+            <a href="/" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              HOME
+            </a>
+            <a href="/blog" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              BLOG
+            </a>
+            <a href="/about" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              ABOUT
+            </a>
+            <a href="/contact" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              CONTACT
+            </a>
+          </div>
+        </div>
       </div>
     </nav>
 
-    <!-- Blog Post Header -->
-    <section class="bg-gradient-to-r from-primary-600 to-primary-700 text-white py-16">
+    <!-- Blog Post Hero Section -->
+    <section class="bg-black text-white py-16 md:py-20">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h1 class="text-4xl md:text-5xl font-bold mb-4">
           {post?.fields?.title ?? '(Untitled)'}
         </h1>
         {post?.fields?.excerpt && (
-          <p class="text-xl text-primary-100 max-w-3xl mx-auto">
+          <p class="text-xl text-gray-400 max-w-3xl mx-auto">
             {post.fields.excerpt}
           </p>
         )}
       </div>
     </section>
 
-    <!-- Featured Image -->
+    <!-- Featured Image - Contained Section -->
     {featuredImage && (
-      <section class="py-8">
+      <section class="bg-white py-8">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <img 
-            src={featuredImage}
-            alt={post?.fields?.title ?? 'Blog post image'}
-            class="w-full h-64 md:h-96 object-cover rounded-lg shadow-lg"
-            loading="lazy"
-            decoding="async"
-            width="800"
-            height="450"
-          />
+          <div class="w-full overflow-hidden">
+            <img 
+              src={featuredImage}
+              alt={post?.fields?.title ?? 'Blog post image'}
+              class="w-full h-auto object-contain mx-auto"
+              loading="eager"
+              decoding="async"
+              style="max-width: 100%; height: auto; display: block;"
+            />
+          </div>
         </div>
       </section>
     )}
 
     <!-- Blog Post Content -->
-    <section class="py-16">
+    <section class="py-16 bg-white">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Post Meta -->
-        <div class="mb-8 pb-4 border-b">
+        <div class="mb-8 pb-4 border-b-2 border-black">
           <!-- Author, Date, and Reading Time -->
-          <div class="flex flex-wrap items-center gap-4 text-sm text-gray-500 mb-4">
+          <div class="flex flex-wrap items-center gap-4 text-sm text-gray-700 mb-4">
             {post?.fields?.author && (
               <span class="flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,9 +275,9 @@ try {
             {post?.fields?.publishDate && (
               <span class="flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 0a4 4 0 00-4 4v6a4 4 0 004 4h8a4 4 0 004-4v-6a4 4 0 00-4-4z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                {new Date(post.fields.publishDate).toLocaleDateString()}
+                {formatDate(post.fields.publishDate)}
               </span>
             )}
             <span class="flex items-center">
@@ -192,7 +298,7 @@ try {
           {post?.fields?.tags && post.fields.tags.length > 0 && (
             <div class="flex flex-wrap gap-2">
               {post.fields.tags.map((tag: string) => (
-                <span class="px-3 py-1 bg-primary-100 text-primary-800 text-xs rounded-full whitespace-nowrap">
+                <span class="px-3 py-1 bg-gray-100 text-black text-xs border border-gray-300 whitespace-nowrap">
                   {tag}
                 </span>
               ))}
@@ -201,21 +307,16 @@ try {
         </div>
 
         <!-- Content -->
-        <div class="prose prose-lg prose-primary max-w-none">
-          <!-- This is where you would render the rich text content -->
-          <div class="bg-gray-50 border-l-4 border-primary-500 p-4 mb-8">
-            <p class="text-gray-700">
-              <strong>Note:</strong> This is a placeholder for the rich text content. 
-              In a real implementation, you would render the Contentful Rich Text field here 
-              using a library like <code>@contentful/rich-text-react-renderer</code> or similar.
-            </p>
+        {contentHtml ? (
+          <div 
+            class="rich-text-content prose prose-lg max-w-none"
+            set:html={contentHtml}
+          />
+        ) : (
+          <div class="text-gray-800">
+            <p>No content available for this post.</p>
           </div>
-          
-          <p>
-            This blog post demonstrates how to create dynamic blog posts using Contentful's content models. 
-            You can create any type of blog content and it will be automatically generated.
-          </p>
-        </div>
+        )}
       </div>
     </section>
 
@@ -223,7 +324,7 @@ try {
     {relatedPosts.length > 0 && (
       <section class="py-16 bg-gray-50">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 class="text-3xl font-bold text-gray-900 mb-8">Related Posts</h2>
+          <h2 class="text-3xl font-bold text-black mb-8">Related Posts</h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             {relatedPosts.map((relatedPost: BlogPost) => {
               const relatedPostImage = relatedPost?.fields?.featuredImage?.sys?.id 
@@ -234,12 +335,12 @@ try {
                 : null;
               
               return (
-                <article class="bg-white rounded-lg shadow-md overflow-hidden">
+                <article class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all">
                   {relatedPostImageUrl && (
                     <img 
                       src={relatedPostImageUrl}
                       alt={relatedPost?.fields?.title ?? 'Related post image'}
-                      class="w-full h-48 object-cover"
+                      class="w-full h-48 object-cover grayscale hover:grayscale-0 transition-all"
                       loading="lazy"
                       decoding="async"
                       width="400"
@@ -247,13 +348,13 @@ try {
                     />
                   )}
                 <div class="p-6">
-                  <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                    <a href={`/blog/${relatedPost?.fields?.slug}`} class="hover:text-primary-600 transition-colors">
+                  <h3 class="text-xl font-bold text-black mb-2">
+                    <a href={`/blog/${relatedPost?.fields?.slug}`} class="hover:underline transition-colors">
                       {relatedPost?.fields?.title ?? '(Untitled)'}
                     </a>
                   </h3>
                   {relatedPost?.fields?.excerpt && (
-                    <p class="text-gray-600 text-sm line-clamp-3">
+                    <p class="text-gray-700 text-sm line-clamp-3">
                       {relatedPost.fields.excerpt}
                     </p>
                   )}
@@ -267,11 +368,11 @@ try {
     )}
 
     <!-- Back to Blog -->
-    <section class="py-16">
+    <section class="py-16 bg-white">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <a 
           href="/blog"
-          class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+          class="inline-flex items-center px-6 py-3 border-2 border-black text-black font-semibold hover:bg-black hover:text-white transition-colors"
         >
           <svg class="mr-2 -ml-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -286,15 +387,15 @@ try {
 <style>
   /* Custom styles for the blog post */
   .rich-text-content h2 {
-    @apply text-2xl font-bold text-gray-900 mt-8 mb-4;
+    @apply text-2xl font-bold text-black mt-8 mb-4;
   }
   
   .rich-text-content h3 {
-    @apply text-xl font-semibold text-gray-900 mt-6 mb-3;
+    @apply text-xl font-semibold text-black mt-6 mb-3;
   }
   
   .rich-text-content p {
-    @apply text-gray-700 mb-4 leading-relaxed;
+    @apply text-gray-800 mb-4 leading-relaxed;
   }
   
   .rich-text-content ul, .rich-text-content ol {
@@ -302,19 +403,19 @@ try {
   }
   
   .rich-text-content li {
-    @apply text-gray-700 mb-2;
+    @apply text-gray-800 mb-2;
   }
   
   .rich-text-content blockquote {
-    @apply border-l-4 border-primary-500 pl-4 py-2 my-6 bg-primary-50;
+    @apply border-l-4 border-black pl-4 py-2 my-6 bg-gray-50;
   }
   
   .rich-text-content blockquote p {
-    @apply text-gray-700 italic mb-0;
+    @apply text-gray-800 italic mb-0;
   }
   
   .rich-text-content code {
-    @apply bg-gray-100 text-gray-800 px-2 py-1 rounded text-sm font-mono;
+    @apply bg-gray-100 text-black px-2 py-1 rounded text-sm font-mono;
   }
   
   .line-clamp-3 {

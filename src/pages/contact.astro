@@ -3,92 +3,85 @@ import Base from '../layouts/Base.astro';
 ---
 
 <Base 
-  title="Contact - Your Company"
-  description="Get in touch with us for any questions or inquiries."
+  title="Contact - How God Speaks To Us"
+  description="Get in touch with us for any questions or inquiries about our daily devotional."
   canonical={`${Astro.url.origin}/contact`}
 >
-  <section class="bg-white py-16">
+  <!-- Hero Section -->
+  <section class="relative bg-black text-white pt-32 pb-16 md:pt-40 md:pb-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Contact Us</h1>
+      <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+        Have questions? We'd love to hear from you.
+      </p>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <section class="py-20 bg-white">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-16">
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">Contact Us</h1>
-        <p class="text-xl text-gray-600">
-          Have questions? We'd love to hear from you.
-        </p>
-      </div>
-      
       <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
         <div>
-          <h2 class="text-2xl font-semibold text-gray-900 mb-4">Get in Touch</h2>
-          <p class="text-gray-600 mb-6">
-            Whether you have a question about our services, pricing, or anything else, 
-            our team is ready to answer all your questions.
+          <h2 class="text-2xl font-bold text-black mb-4">Get in Touch</h2>
+          <p class="text-gray-700 mb-6">
+            Whether you have a question about our devotional content, feedback, or anything else, 
+            we'd love to hear from you.
           </p>
           
           <div class="space-y-4">
             <div class="flex items-center">
-              <div class="bg-primary-100 p-3 rounded-full mr-4">
-                <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="bg-black p-3 rounded-full mr-4">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <div>
-                <h3 class="font-medium text-gray-900">Email</h3>
-                <p class="text-gray-600">hello@example.com</p>
-              </div>
-            </div>
-            
-            <div class="flex items-center">
-              <div class="bg-primary-100 p-3 rounded-full mr-4">
-                <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 class="font-medium text-gray-900">Office</h3>
-                <p class="text-gray-600">123 Main Street, City, Country</p>
+                <h3 class="font-medium text-black">Email</h3>
+                <a href="mailto:howhespeakstous@gmail.com" class="text-gray-700 hover:text-black transition-colors">
+                  howhespeakstous@gmail.com
+                </a>
               </div>
             </div>
           </div>
         </div>
         
-        <div class="bg-gray-50 p-8 rounded-lg">
-          <h2 class="text-2xl font-semibold text-gray-900 mb-4">Send us a Message</h2>
+        <div class="bg-white border-2 border-black p-8">
+          <h2 class="text-2xl font-bold text-black mb-4">Send us a Message</h2>
           <form id="contact-form" class="space-y-4">
             <div id="form-message" class="hidden p-4 rounded-md mb-4"></div>
             
             <div>
-              <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <label for="name" class="block text-sm font-medium text-black mb-1">Name</label>
               <input
                 type="text"
                 id="name"
                 name="name"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                class="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
                 placeholder="Your name"
               />
             </div>
             
             <div>
-              <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label for="email" class="block text-sm font-medium text-black mb-1">Email</label>
               <input
                 type="email"
                 id="email"
                 name="email"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                class="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
                 placeholder="your@email.com"
               />
             </div>
             
             <div>
-              <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message</label>
+              <label for="message" class="block text-sm font-medium text-black mb-1">Message</label>
               <textarea
                 id="message"
                 name="message"
                 rows="4"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                class="w-full px-3 py-2 border-2 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
                 placeholder="Your message..."
               ></textarea>
             </div>
@@ -96,7 +89,7 @@ import Base from '../layouts/Base.astro';
             <button
               type="submit"
               id="submit-btn"
-              class="w-full bg-primary-600 text-white py-2 px-4 rounded-md hover:bg-primary-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full bg-black text-white py-3 px-4 rounded-md hover:bg-gray-800 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed border-2 border-black"
             >
               <span id="submit-text">Send Message</span>
               <span id="submit-loading" class="hidden">Sending...</span>
@@ -127,18 +120,38 @@ import Base from '../layouts/Base.astro';
 
       try {
         const formData = new FormData(form);
+        const name = formData.get('name');
+        const email = formData.get('email');
+        const message = formData.get('message');
         
         const response = await fetch('/api/contact', {
           method: 'POST',
           body: formData
         });
 
+        // Check if response is OK and is JSON
+        if (!response.ok) {
+          // If we get a 404 or HTML response, it means we're in local development
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            // Provide mailto fallback for local development
+            const nameStr = String(name || 'Visitor');
+            const emailStr = String(email || '');
+            const messageStr = String(message || '');
+            const mailtoLink = `mailto:howhespeakstous@gmail.com?subject=Contact Form Submission from ${encodeURIComponent(nameStr)}&body=${encodeURIComponent(`Name: ${nameStr}\nEmail: ${emailStr}\n\nMessage:\n${messageStr}`)}`;
+            formMessage.innerHTML = `The contact form requires deployment to Cloudflare Pages. For now, please <a href="${mailtoLink}" class="underline font-semibold">send us an email directly</a>.`;
+            formMessage.className = 'p-4 rounded-md mb-4 bg-gray-100 text-black border-2 border-black';
+            formMessage.classList.remove('hidden');
+            return;
+          }
+        }
+
         const result = await response.json();
 
         if (result.success) {
           // Show success message
           formMessage.textContent = result.message;
-          formMessage.className = 'p-4 rounded-md mb-4 bg-green-100 text-green-800 border border-green-200';
+          formMessage.className = 'p-4 rounded-md mb-4 bg-gray-100 text-black border-2 border-black';
           formMessage.classList.remove('hidden');
           
           // Reset form
@@ -146,13 +159,24 @@ import Base from '../layouts/Base.astro';
         } else {
           // Show error message
           formMessage.textContent = result.error || 'Something went wrong. Please try again.';
-          formMessage.className = 'p-4 rounded-md mb-4 bg-red-100 text-red-800 border border-red-200';
+          formMessage.className = 'p-4 rounded-md mb-4 bg-gray-100 text-black border-2 border-red-600';
           formMessage.classList.remove('hidden');
         }
       } catch (error) {
         console.error('Form submission error:', error);
-        formMessage.textContent = 'Network error. Please check your connection and try again.';
-        formMessage.className = 'p-4 rounded-md mb-4 bg-red-100 text-red-800 border border-red-200';
+        
+        // If it's a network/parse error, provide mailto fallback
+        const formData = new FormData(form);
+        const name = formData.get('name');
+        const email = formData.get('email');
+        const message = formData.get('message');
+        const nameStr = String(name || 'Visitor');
+        const emailStr = String(email || '');
+        const messageStr = String(message || '');
+        const mailtoLink = `mailto:howhespeakstous@gmail.com?subject=Contact Form Submission from ${encodeURIComponent(nameStr)}&body=${encodeURIComponent(`Name: ${nameStr}\nEmail: ${emailStr}\n\nMessage:\n${messageStr}`)}`;
+        
+        formMessage.innerHTML = `Unable to submit form. Please <a href="${mailtoLink}" class="underline font-semibold">send us an email directly</a> or try again later.`;
+        formMessage.className = 'p-4 rounded-md mb-4 bg-gray-100 text-black border-2 border-red-600';
         formMessage.classList.remove('hidden');
       } finally {
         // Reset button state

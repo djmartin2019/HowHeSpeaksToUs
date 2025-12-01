@@ -1,7 +1,7 @@
-// Cloudflare Pages Function for handling contact form submissions
-export async function onRequestPost(context) {
+// Astro API endpoint for contact form submissions
+// Works in both development and production (Cloudflare Pages)
+export async function POST({ request }: { request: Request }) {
   try {
-    const { request, env } = context;
     const formData = await request.formData();
 
     const name = formData.get("name");

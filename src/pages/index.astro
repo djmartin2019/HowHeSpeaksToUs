@@ -4,13 +4,13 @@ import { getRecentBlogPosts, resolveAsset } from '../lib/contentful';
 import { formatDate, getAssetUrl } from '../lib/contentful';
 
 // Fetch recent blog posts for the homepage
-let recentPosts: any[] = [];
+let recentPosts = [];
 try {
-  const postsResponse = await getRecentBlogPosts(3);
+  const postsResponse = await getRecentBlogPosts(6);
   // Filter posts to ensure they have the required structure
   recentPosts = (postsResponse.items || [])
-    .filter((post: any) => post?.sys?.type === 'Entry' && post?.fields && post.fields.title && post.fields.slug)
-    .map((post: any) => ({
+    .filter((post) => post?.sys?.type === 'Entry' && post?.fields && post.fields.title && post.fields.slug)
+    .map((post) => ({
       ...post,
       featuredImageResolved: resolveAsset(post.fields.featuredImage, postsResponse.includes || {})
     }));
@@ -18,115 +18,134 @@ try {
   console.error('Error fetching recent posts:', error);
   // Continue without posts if there's an error
 }
+
+// Verse of the Day - This structure can be connected to Contentful later
+// For now, using a placeholder that can be replaced with Contentful data
+const today = new Date();
+const verseOfTheDayDate = today.toISOString().split('T')[0];
+const verseOfTheDay = {
+  reference: "Jeremiah 29:13",
+  text: "You will seek me and find me when you seek me with all your heart.",
+  date: verseOfTheDayDate
+};
+
+// Previous verses - placeholder data structure for now
+// This can be replaced with Contentful queries later
+const previousVerses = [
+  {
+    reference: "Psalm 119:105",
+    text: "Your word is a lamp to my feet and a light to my path.",
+    date: new Date(today.getTime() - 86400000).toISOString().split('T')[0] // yesterday
+  },
+  {
+    reference: "Proverbs 3:5-6",
+    text: "Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight.",
+    date: new Date(today.getTime() - 172800000).toISOString().split('T')[0] // 2 days ago
+  },
+  {
+    reference: "Isaiah 40:31",
+    text: "But those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary, they will walk and not be faint.",
+    date: new Date(today.getTime() - 259200000).toISOString().split('T')[0] // 3 days ago
+  }
+];
 ---
 
 <Base 
-  title="Welcome to Your Astro + Contentful Website"
-  description="A modern, fast website built with Astro and powered by Contentful CMS. Discover our latest content and learn how we can help you."
+  title="How God Speaks To Us - A Daily Devotional"
+  description="A daily devotional and meditations on God's Word. Discover how God speaks through His Word, His Spirit, His people, wisdom, and circumstances."
   canonical={Astro.url.origin}
 >
-  <!-- Hero Section -->
-  <section class="bg-gradient-to-br from-primary-600 to-primary-800 text-white py-20" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <h1 class="text-4xl md:text-6xl font-bold mb-6">
-        Welcome to Your
-        <span class="block text-primary-200">Content-Driven Website</span>
-      </h1>
-      <p class="text-xl md:text-2xl text-primary-100 mb-8 max-w-3xl mx-auto">
-        Built with Astro for speed and Contentful for flexibility. 
-        Create, manage, and deliver content that engages your audience.
+  <!-- Hero Section - Verse of the Day -->
+  <section class="relative bg-black text-white pt-32 pb-20 md:pt-40 md:pb-32">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <p class="text-sm md:text-base uppercase tracking-wider text-gray-400 mb-6">
+        Verse of the Day
       </p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <a 
-          href="/blog" 
-          class="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-colors"
-        >
-          Read Our Blog
-        </a>
-        <a 
-          href="/about" 
-          class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary-600 transition-colors"
-        >
-          Learn More
-        </a>
-      </div>
+      <h1 class="text-3xl md:text-5xl font-bold mb-8 leading-tight">
+        {verseOfTheDay.reference}
+      </h1>
+      <blockquote class="text-xl md:text-2xl lg:text-3xl font-light leading-relaxed mb-8 max-w-3xl mx-auto italic">
+        "{verseOfTheDay.text}"
+      </blockquote>
+      <p class="text-sm text-gray-400">
+        {formatDate(verseOfTheDayDate + 'T00:00:00')}
+      </p>
     </div>
   </section>
 
-  <!-- Features Section -->
+  <!-- About Section -->
   <section class="py-20 bg-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="text-center mb-16">
-        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-          Why Choose This Stack?
-        </h2>
-        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-          Our technology choices deliver the best performance, developer experience, and content management capabilities.
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl md:text-4xl font-bold text-black mb-8 text-center">
+        How God Speaks To Us
+      </h2>
+      <div class="prose prose-lg max-w-none text-gray-800">
+        <p class="text-lg leading-relaxed mb-6">
+          God is not silent—He delights to speak to His people. From the opening pages of Scripture to the present day, the Lord has revealed Himself in ways that guide, comfort, and correct us. Yet His voice is not always dramatic or loud; often, it comes through ordinary means that invite us to listen with faith and discernment.
+        </p>
+        <p class="text-lg leading-relaxed">
+          This devotional explores five key ways God speaks—through His Word, His Spirit, His people, our God-given wisdom, and the circumstances of life—reminding us that His guidance is both personal and purposeful.
         </p>
       </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div class="text-center">
-          <div class="bg-primary-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 mb-2">Lightning Fast</h3>
-          <p class="text-gray-600">
-            Astro delivers exceptional performance with zero JavaScript by default and smart partial hydration.
-          </p>
-        </div>
-        
-        <div class="text-center">
-          <div class="bg-primary-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
-            </svg>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 mb-2">Content First</h3>
-          <p class="text-gray-600">
-            Contentful provides a powerful headless CMS with rich content modeling and API-first architecture.
-          </p>
-        </div>
-        
-        <div class="text-center">
-          <div class="bg-primary-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 mb-2">Developer Experience</h3>
-          <p class="text-gray-600">
-            TypeScript support, modern tooling, and excellent documentation make development a joy.
-          </p>
-        </div>
+    </div>
+  </section>
+
+  <!-- Previous Daily Verses Section -->
+  <section class="py-20 bg-gray-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl md:text-4xl font-bold text-black mb-12 text-center">
+        Previous Daily Verses
+      </h2>
+      <div class="space-y-8">
+        {previousVerses.map((verse) => (
+          <article class="bg-white border-l-4 border-black p-6 md:p-8 shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between mb-4">
+              <h3 class="text-xl md:text-2xl font-bold text-black mb-2 md:mb-0">
+                {verse.reference}
+              </h3>
+              <time datetime={verse.date} class="text-sm text-gray-600 md:ml-4">
+                {formatDate(verse.date + 'T00:00:00')}
+              </time>
+            </div>
+            <blockquote class="text-lg md:text-xl text-gray-800 italic leading-relaxed">
+              "{verse.text}"
+            </blockquote>
+          </article>
+        ))}
+      </div>
+      <div class="text-center mt-12">
+        <a 
+          href="/verses"
+          class="inline-block px-8 py-3 border-2 border-black text-black font-semibold hover:bg-black hover:text-white transition-colors"
+        >
+          View All Verses
+        </a>
       </div>
     </div>
   </section>
 
-  <!-- Recent Posts Section -->
+  <!-- Recent Blog Posts Section -->
   {recentPosts.length > 0 && (
-    <section class="py-20 bg-gray-50">
+    <section class="py-20 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Latest from Our Blog
+          <h2 class="text-3xl md:text-4xl font-bold text-black mb-4">
+            Recent Blog Posts
           </h2>
-          <p class="text-xl text-gray-600">
-            Stay updated with our latest thoughts, tutorials, and insights.
+          <p class="text-xl text-gray-700 max-w-2xl mx-auto">
+            Sermon notes, reflections, and meditations on God's Word
           </p>
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {recentPosts.map((post) => (
-            <article class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+            <article class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all">
               {post.featuredImageResolved && (
                 <div class="aspect-w-16 aspect-h-9">
                   <img
                     src={getAssetUrl(post.featuredImageResolved, 400, 225)}
                     alt={post.featuredImageResolved?.fields?.title || post?.fields?.title || 'Blog post image'}
-                    class="w-full h-48 object-cover"
+                    class="w-full h-48 object-cover grayscale hover:grayscale-0 transition-all"
                     loading="lazy"
                     decoding="async"
                     width="400"
@@ -136,7 +155,7 @@ try {
                 </div>
               )}
               <div class="p-6">
-                <div class="flex items-center text-sm text-gray-500 mb-2">
+                <div class="flex items-center text-sm text-gray-600 mb-3">
                   <time datetime={post?.fields?.publishDate}>
                     {formatDate(post?.fields?.publishDate ?? new Date().toISOString())}
                   </time>
@@ -147,27 +166,27 @@ try {
                     </>
                   )}
                 </div>
-                <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                  <a href={`/blog/${post?.fields?.slug}`} class="hover:text-primary-600 transition-colors">
+                <h3 class="text-xl font-bold text-black mb-3">
+                  <a href={`/blog/${post?.fields?.slug}`} class="hover:underline transition-colors">
                     {post?.fields?.title ?? '(Untitled)'}
                   </a>
                 </h3>
                 {post?.fields?.excerpt && (
-                  <p class="text-gray-600 mb-4 line-clamp-3">
+                  <p class="text-gray-700 mb-4 line-clamp-3">
                     {post.fields.excerpt}
                   </p>
                 )}
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <a 
                     href={`/blog/${post?.fields?.slug}`}
-                    class="text-primary-600 hover:text-primary-700 font-medium transition-colors self-start"
+                    class="text-black hover:underline font-semibold transition-colors self-start border-b-2 border-black pb-1"
                   >
                     Read more →
                   </a>
                   {post?.fields?.tags && post.fields.tags.length > 0 && (
-                    <div class="flex flex-wrap gap-1">
-                      {post.fields.tags.slice(0, 2).map((tag: string) => (
-                        <span class="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full whitespace-nowrap">
+                    <div class="flex flex-wrap gap-2">
+                      {post.fields.tags.slice(0, 2).map((tag: any) => (
+                        <span class="text-xs bg-gray-100 text-black px-3 py-1 border border-gray-300 whitespace-nowrap">
                           {tag}
                         </span>
                       ))}
@@ -182,37 +201,12 @@ try {
         <div class="text-center mt-12">
           <a 
             href="/blog"
-            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+            class="inline-block px-8 py-3 border-2 border-black text-black font-semibold hover:bg-black hover:text-white transition-colors"
           >
             View All Posts
-            <svg class="ml-2 -mr-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
           </a>
         </div>
       </div>
     </section>
   )}
-
-  <!-- CTA Section -->
-  <section class="py-20 bg-primary-600 text-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <h2 class="text-3xl md:text-4xl font-bold mb-4">
-        Ready to Get Started?
-      </h2>
-      <p class="text-xl text-primary-100 mb-8 max-w-2xl mx-auto">
-        This starter template provides everything you need to build your next content-driven website. 
-        Customize it to match your brand and requirements.
-      </p>
-      <a 
-        href="https://github.com/djmartin2019/Astro-Contentful-Starter-Project.git"
-        class="inline-flex items-center px-8 py-3 bg-white text-primary-600 rounded-lg font-semibold hover:bg-primary-50 transition-colors"
-      >
-        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-        </svg>
-        Get the Template
-      </a>
-    </div>
-  </section>
 </Base>

@@ -58,27 +58,27 @@ try {
 ---
 
 <Base
-  title="Blog - Your Company"
-  description="Read our latest articles, tutorials, and insights on web development, content management, and more."
+  title="Blog - How God Speaks To Us"
+  description="Sermon notes, reflections, and meditations on God's Word."
   canonical={`${Astro.url.origin}/blog`}
 >
   <!-- Header -->
-  <section class="bg-white border-b border-gray-200 py-16">
+  <section class="relative bg-black text-white pt-32 pb-16 md:pt-40 md:pb-20">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center">
-        <h1 class="text-4xl font-bold text-gray-900 mb-4">Our Blog</h1>
-        <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-          Insights, tutorials, and thoughts on building modern, content-driven websites.
+        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Our Blog</h1>
+        <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+          Sermon notes, reflections, and meditations on God's Word.
         </p>
       </div>
 
       <!-- Tag Filtering -->
       {allTags.length > 0 && (
-        <div class="mt-8">
+        <div class="mt-12">
           <div class="flex flex-wrap justify-center gap-2" id="tag-filter-container">
             <button
               type="button"
-              class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-primary-600 text-white"
+              class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white text-black border-2 border-white"
               data-tag="all"
               id="tag-all"
             >
@@ -87,7 +87,7 @@ try {
             {allTags.map((tagName) => (
               <button
                 type="button"
-                class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200"
+                class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-gray-300 border border-gray-600 hover:border-white hover:text-white"
                 data-tag={tagName}
                 id={`tag-${tagName}`}
               >
@@ -101,13 +101,13 @@ try {
   </section>
 
   <!-- Blog Posts Grid -->
-  <section class="py-16 bg-gray-50">
+  <section class="py-16 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {posts.length > 0 ? (
         <>
           <!-- Results count -->
           <div class="mb-8">
-            <p class="text-gray-600">
+            <p class="text-gray-700">
               {tags.length > 0 
                 ? `Showing posts tagged with "${tags.join('", "')}"` 
                 : 'Showing all posts'
@@ -120,7 +120,7 @@ try {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="posts-grid">
 {posts.map((post) => (
   <article 
-    class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 post-item"
+    class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all duration-300 post-item"
     data-tags={post?.fields?.tags?.join(',') || ''}
   >
     {post.featuredResolved && (
@@ -128,7 +128,7 @@ try {
         <img
           src={getAssetUrl(post.featuredResolved, 800, 450)}
           alt={post.featuredResolved?.fields?.title ?? post.fields.title}
-          class="w-full h-48 object-cover"
+          class="w-full h-48 object-cover grayscale hover:grayscale-0 transition-all"
           loading="lazy"
           decoding="async"
           width="800"
@@ -138,7 +138,7 @@ try {
       </div>
     )}
     <div class="p-6">
-      <div class="flex items-center text-sm text-gray-500 mb-2">
+      <div class="flex items-center text-sm text-gray-600 mb-3">
         <time datetime={post?.fields?.publishDate}>
           {formatDate(post?.fields?.publishDate ?? new Date().toISOString())}
         </time>
@@ -149,27 +149,27 @@ try {
           </>
         )}
       </div>
-      <h2 class="text-xl font-semibold text-gray-900 mb-2">
-        <a href={`/blog/${post?.fields?.slug}`} class="hover:text-primary-600 transition-colors">
+      <h2 class="text-xl font-bold text-black mb-3">
+        <a href={`/blog/${post?.fields?.slug}`} class="hover:underline transition-colors">
           {post?.fields?.title ?? '(Untitled)'}
         </a>
       </h2>
       {post?.fields?.excerpt && (
-        <p class="text-gray-600 mb-4 line-clamp-3">
+        <p class="text-gray-700 mb-4 line-clamp-3">
           {post.fields.excerpt}
         </p>
       )}
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <a
           href={`/blog/${post?.fields?.slug}`}
-          class="text-primary-600 hover:text-primary-700 font-medium transition-colors self-start"
+          class="text-black hover:underline font-semibold transition-colors self-start border-b-2 border-black pb-1"
         >
           Read more →
         </a>
         {!!(post?.fields?.tags?.length) && (
-          <div class="flex flex-wrap gap-1">
+          <div class="flex flex-wrap gap-2">
             {post.fields.tags.slice(0, 2).map((tagName: string) => (
-              <span class="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded-full whitespace-nowrap">
+              <span class="text-xs bg-gray-100 text-black px-3 py-1 border border-gray-300 whitespace-nowrap">
                 {tagName}
               </span>
             ))}
@@ -188,7 +188,7 @@ try {
                 {hasPrevPage && (
             <a
               href={`/blog?page=${page - 1}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
-              class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
             >
               Previous
             </a>
@@ -197,10 +197,10 @@ try {
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                   <a
                     href={`/blog?page=${pageNum}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
-                    class={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    class={`px-3 py-2 text-sm font-medium transition-colors ${
                       pageNum === page
-                        ? 'bg-primary-600 text-white'
-                        : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                        ? 'bg-black text-white border-2 border-black'
+                        : 'text-black bg-white border-2 border-gray-300 hover:border-black'
                     }`}
                   >
                     {pageNum}
@@ -210,7 +210,7 @@ try {
                 {hasNextPage && (
                   <a
                     href={`/blog?page=${page + 1}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
-                    class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                    class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
                   >
                     Next
                   </a>
@@ -226,8 +226,8 @@ try {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
-          <h3 class="text-lg font-medium text-gray-900 mb-2">No posts found</h3>
-          <p class="text-gray-600 mb-6">
+          <h3 class="text-lg font-medium text-black mb-2">No posts found</h3>
+          <p class="text-gray-700 mb-6">
             {tags.length > 0
               ? `No posts found with the tags "${tags.join('", "')}".`
               : 'No blog posts available at the moment.'
@@ -236,7 +236,7 @@ try {
           {tags.length > 0 && (
             <a
               href="/blog"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors"
+              class="inline-flex items-center px-6 py-3 border-2 border-black text-black font-semibold hover:bg-black hover:text-white transition-colors"
             >
               View All Posts
             </a>
