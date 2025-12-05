@@ -33,7 +33,10 @@ const {
 
 // Default meta description
 const metaDescription = description || "A daily devotional and meditations on God's Word. Discover how God speaks through His Word, His Spirit, His people, wisdom, and circumstances.";
-const metaImage = image || "/howgodspeakstous.png";
+// Ensure image is always an absolute URL
+const metaImage = image 
+  ? (image.startsWith('http') ? image : new URL(image, Astro.url.origin).href)
+  : new URL("/howgodspeakstous.png", Astro.url.origin).href;
 const canonicalUrl = canonical || Astro.url.href;
 
 // Generate enhanced structured data
@@ -158,7 +161,7 @@ const websiteStructuredData = {
 <meta name="twitter:url" content={canonicalUrl} />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={metaDescription} />
-<meta name="twitter:image" content={new URL(metaImage, canonicalUrl).href} />
+<meta name="twitter:image" content={metaImage} />
 <meta name="twitter:image:alt" content={title} />
 <meta name="twitter:site" content="@djmartin2019" />
 {author && <meta name="twitter:creator" content={`@${author.toLowerCase().replace(/\s+/g, '')}`} />}
