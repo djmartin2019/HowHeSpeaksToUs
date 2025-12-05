@@ -161,7 +161,7 @@ const websiteStructuredData = {
 <meta name="twitter:image" content={new URL(metaImage, canonicalUrl).href} />
 <meta name="twitter:image:alt" content={title} />
 <meta name="twitter:site" content="@djmartin2019" />
-{author && <meta name="twitter:creator" content="@djmartin2019" />}
+{author && <meta name="twitter:creator" content={`@${author.toLowerCase().replace(/\s+/g, '')}`} />}
 
 <!-- Organization Structured Data -->
 <script type="application/ld+json" set:html={JSON.stringify({
