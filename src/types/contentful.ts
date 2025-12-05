@@ -26,6 +26,16 @@ export interface Page {
   };
 }
 
+export interface DailyVerse {
+  sys: { id: string };
+  fields: {
+    verse: any; // Rich text (localized)
+    date: string; // Date & time (display date)
+    description?: any; // Rich text (blurb about the verse)
+    passage?: string; // Long text - Bible reference (e.g., "John 3:16")
+  };
+}
+
 // Collection types
 export interface ContentfulCollection<T> {
   items: T[];
@@ -36,3 +46,4 @@ export interface ContentfulCollection<T> {
 
 export type BlogPostCollection = ContentfulCollection<BlogPost>;
 export type PageCollection = ContentfulCollection<Page>;
+export type DailyVerseCollection = ContentfulCollection<DailyVerse>;

@@ -27,6 +27,16 @@ export interface Page {
   };
 }
 
+export interface DailyVerse {
+  sys: { id: string };
+  fields: {
+    verse: any; // Rich text (localized)
+    date: string; // Date & time (display date)
+    description?: any; // Rich text (blurb about the verse)
+    passage?: string; // Long text - Bible reference (e.g., "John 3:16")
+  };
+}
+
 // Query parameters interface
 export interface QueryParams {
   limit?: number;
@@ -242,6 +252,55 @@ export async function getPageBySlug(slug: string) {
     include: 1,
   });
   return response.items?.[0] ?? null;
+}
+
+// getDailyVerses
+export async function getDailyVerses(params: QueryParams = {}) {
+  const query: any = {
+    content_type: "dailyVerse",
+    order: params.order || ["-fields.date"],
+    limit: params.limit || 100,
+    skip: params.skip || 0,
+    include: 10,
+    locale: "en-US", // Specify locale to get localized content
+  };
+  return cfQuery(query);
+}
+
+// getDailyVerseByDate - expects date in YYYY-MM-DD format
+export async function getDailyVerseByDate(dateString: string) {
+  // Contentful date fields are stored as ISO strings, so we need to query by date range
+  // For exact date match, we'll query and filter
+  const startOfDay = `${dateString}T00:00:00Z`;
+  const endOfDay = `${dateString}T23:59:59Z`;
+  
+  const response = await cfQuery({
+    content_type: "dailyVerse",
+    "fields.date[gte]": startOfDay,
+    "fields.date[lte]": endOfDay,
+    limit: 1,
+    include: 10,
+    locale: "en-US", // Specify locale to get localized content
+  });
+  return response.items?.[0] ?? null;
+}
+
+// getTodayVerse - gets the verse for today's date
+export async function getTodayVerse() {
+  const today = new Date();
+  const dateString = today.toISOString().split('T')[0];
+  return getDailyVerseByDate(dateString);
+}
+
+// getRecentDailyVerses
+export async function getRecentDailyVerses(limit = 5) {
+  return cfQuery({
+    content_type: "dailyVerse",
+    order: ["-fields.date"],
+    limit,
+    include: 10,
+    locale: "en-US", // Specify locale to get localized content
+  });
 }
 
 // Utility functions

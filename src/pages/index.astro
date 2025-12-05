@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getRecentBlogPosts, resolveAsset } from '../lib/contentful';
-import { formatDate, getAssetUrl } from '../lib/contentful';
+import { getRecentBlogPosts, resolveAsset, getTodayVerse, getRecentDailyVerses, formatDate, getAssetUrl } from '../lib/contentful';
+import { renderRichText } from '../lib/rich-text-renderer';
 
 // Fetch recent blog posts for the homepage
 let recentPosts = [];
@@ -19,35 +19,61 @@ try {
   // Continue without posts if there's an error
 }
 
-// Verse of the Day - This structure can be connected to Contentful later
-// For now, using a placeholder that can be replaced with Contentful data
-const today = new Date();
-const verseOfTheDayDate = today.toISOString().split('T')[0];
-const verseOfTheDay = {
-  reference: "Jeremiah 29:13",
-  text: "You will seek me and find me when you seek me with all your heart.",
-  date: verseOfTheDayDate
-};
-
-// Previous verses - placeholder data structure for now
-// This can be replaced with Contentful queries later
-const previousVerses = [
-  {
-    reference: "Psalm 119:105",
-    text: "Your word is a lamp to my feet and a light to my path.",
-    date: new Date(today.getTime() - 86400000).toISOString().split('T')[0] // yesterday
-  },
-  {
-    reference: "Proverbs 3:5-6",
-    text: "Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight.",
-    date: new Date(today.getTime() - 172800000).toISOString().split('T')[0] // 2 days ago
-  },
-  {
-    reference: "Isaiah 40:31",
-    text: "But those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary, they will walk and not be faint.",
-    date: new Date(today.getTime() - 259200000).toISOString().split('T')[0] // 3 days ago
+// Fetch today's verse from Contentful
+let todayVerse = null;
+let verseHtml = '';
+try {
+  todayVerse = await getTodayVerse();
+  if (todayVerse?.fields?.verse) {
+    verseHtml = renderRichText(todayVerse.fields.verse);
+    // Replace all gray text classes with white
+    verseHtml = verseHtml.replace(/text-gray-\d+/g, 'text-white');
+    // Also replace any inline styles that might set gray colors
+    verseHtml = verseHtml.replace(/color:\s*[^;]*gray[^;]*;/gi, 'color: #FFFFFF !important;');
   }
-];
+} catch (error) {
+  console.error('Error fetching today\'s verse:', error);
+}
+
+// Fetch previous verses from Contentful
+let previousVerses = [];
+try {
+  const versesResponse = await getRecentDailyVerses(4); // Get 4 to account for filtering out today
+  previousVerses = (versesResponse.items || [])
+    .filter((verse) => {
+      if (verse?.sys?.type !== 'Entry' || !verse?.fields) return false;
+      // Exclude today's verse from previous verses
+      const verseDate = new Date(verse.fields.date).toISOString().split('T')[0];
+      const todayDate = new Date().toISOString().split('T')[0];
+      return verseDate !== todayDate;
+    })
+    .slice(0, 3) // Get up to 3 previous verses
+    .map((verse) => {
+      let previewHtml = '';
+      try {
+        if (verse?.fields?.verse) {
+          previewHtml = renderRichText(verse.fields.verse);
+          // Extract text from HTML for preview
+          const textMatch = previewHtml.match(/<p[^>]*>(.*?)<\/p>/);
+          const text = textMatch ? textMatch[1].replace(/<[^>]*>/g, '') : '';
+          return {
+            ...verse,
+            previewText: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
+            dateString: new Date(verse.fields.date).toISOString().split('T')[0]
+          };
+        }
+      } catch (e) {
+        console.error('Error rendering verse preview:', e);
+      }
+      return {
+        ...verse,
+        previewText: '',
+        dateString: new Date(verse.fields.date).toISOString().split('T')[0]
+      };
+    });
+} catch (error) {
+  console.error('Error fetching previous verses:', error);
+}
 ---
 
 <Base 
@@ -57,19 +83,31 @@ const previousVerses = [
 >
   <!-- Hero Section - Verse of the Day -->
   <section class="relative bg-black text-white pt-32 pb-20 md:pt-40 md:pb-32">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <p class="text-sm md:text-base uppercase tracking-wider text-gray-400 mb-6">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <p class="text-sm md:text-base uppercase tracking-wider text-white mb-8 text-center font-bold">
         Verse of the Day
       </p>
-      <h1 class="text-3xl md:text-5xl font-bold mb-8 leading-tight">
-        {verseOfTheDay.reference}
-      </h1>
-      <blockquote class="text-xl md:text-2xl lg:text-3xl font-light leading-relaxed mb-8 max-w-3xl mx-auto italic">
-        "{verseOfTheDay.text}"
-      </blockquote>
-      <p class="text-sm text-gray-400">
-        {formatDate(verseOfTheDayDate + 'T00:00:00')}
-      </p>
+      {verseHtml ? (
+        <div 
+          class="text-xl md:text-2xl lg:text-3xl font-light leading-relaxed mb-8 max-w-6xl mx-auto verse-of-day-content text-white italic"
+          set:html={verseHtml}
+          style="color: #FFFFFF !important;"
+        />
+      ) : (
+        <blockquote class="text-xl md:text-2xl lg:text-3xl font-light leading-relaxed mb-8 max-w-6xl mx-auto text-white italic">
+          "You will seek me and find me when you seek me with all your heart."
+        </blockquote>
+      )}
+      {todayVerse?.fields?.passage && (
+        <p class="text-base md:text-lg text-white mb-8 text-right">
+          {todayVerse.fields.passage}
+        </p>
+      )}
+      {todayVerse?.fields?.date && (
+        <p class="text-sm text-white text-center">
+          {formatDate(todayVerse.fields.date)}
+        </p>
+      )}
     </div>
   </section>
 
@@ -91,38 +129,56 @@ const previousVerses = [
   </section>
 
   <!-- Previous Daily Verses Section -->
-  <section class="py-20 bg-gray-50">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h2 class="text-3xl md:text-4xl font-bold text-black mb-12 text-center">
-        Previous Daily Verses
-      </h2>
-      <div class="space-y-8">
-        {previousVerses.map((verse) => (
-          <article class="bg-white border-l-4 border-black p-6 md:p-8 shadow-sm hover:shadow-md transition-shadow">
-            <div class="flex flex-col md:flex-row md:items-start md:justify-between mb-4">
-              <h3 class="text-xl md:text-2xl font-bold text-black mb-2 md:mb-0">
-                {verse.reference}
-              </h3>
-              <time datetime={verse.date} class="text-sm text-gray-600 md:ml-4">
-                {formatDate(verse.date + 'T00:00:00')}
-              </time>
-            </div>
-            <blockquote class="text-lg md:text-xl text-gray-800 italic leading-relaxed">
-              "{verse.text}"
-            </blockquote>
-          </article>
-        ))}
+  {previousVerses.length > 0 && (
+    <section class="py-20 bg-gray-50">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 class="text-3xl md:text-4xl font-bold text-black mb-12 text-center">
+          Previous Daily Verses
+        </h2>
+        <div class="space-y-8">
+          {previousVerses.map((verse) => (
+            <article class="bg-white border-l-4 border-black p-6 md:p-8 shadow-sm hover:shadow-md transition-shadow">
+              <div class="flex flex-col md:flex-row md:items-start md:justify-between mb-4">
+                {verse?.fields?.passage && (
+                  <h3 class="text-xl md:text-2xl font-bold text-black mb-2 md:mb-0">
+                    {verse.fields.passage}
+                  </h3>
+                )}
+                {verse?.fields?.date && (
+                  <time datetime={verse.fields.date} class="text-sm text-gray-600 md:ml-4">
+                    {formatDate(verse.fields.date)}
+                  </time>
+                )}
+              </div>
+              {verse.previewText && (
+                <blockquote class="text-lg md:text-xl text-gray-800 italic leading-relaxed">
+                  "{verse.previewText}"
+                </blockquote>
+              )}
+              {verse.dateString && (
+                <div class="mt-4">
+                  <a 
+                    href={`/daily-verses/${verse.dateString}`}
+                    class="text-black hover:underline font-semibold transition-colors border-b-2 border-black pb-1 inline-block"
+                  >
+                    Read full verse →
+                  </a>
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+        <div class="text-center mt-12">
+          <a 
+            href="/daily-verses"
+            class="inline-block px-8 py-3 border-2 border-black text-black font-semibold hover:bg-black hover:text-white transition-colors"
+          >
+            View All Verses
+          </a>
+        </div>
       </div>
-      <div class="text-center mt-12">
-        <a 
-          href="/verses"
-          class="inline-block px-8 py-3 border-2 border-black text-black font-semibold hover:bg-black hover:text-white transition-colors"
-        >
-          View All Verses
-        </a>
-      </div>
-    </div>
-  </section>
+    </section>
+  )}
 
   <!-- Recent Blog Posts Section -->
   {recentPosts.length > 0 && (
@@ -210,3 +266,114 @@ const previousVerses = [
     </section>
   )}
 </Base>
+
+<style>
+  /* Verse of the Day styling - Ensuring proper contrast ratios */
+  /* All text is white (#FFFFFF) on black (#000000) = 21:1 contrast ratio (WCAG AAA) */
+  /* Override the text-gray-800 class from rich text renderer */
+  .verse-of-day-content {
+    color: #FFFFFF !important;
+    font-style: italic !important;
+  }
+  
+  .verse-of-day-content p {
+    @apply text-xl md:text-2xl lg:text-3xl font-light leading-relaxed mb-4;
+    color: #FFFFFF !important;
+    font-weight: 300 !important;
+    font-style: italic !important;
+  }
+  
+  /* Override text-gray-800 specifically with highest specificity */
+  /* Target all possible combinations to override Tailwind */
+  section.bg-black .verse-of-day-content p.text-gray-800,
+  section.bg-black .verse-of-day-content .text-gray-800,
+  .verse-of-day-content p.text-gray-800,
+  .verse-of-day-content .text-gray-800,
+  .verse-of-day-content p[class*="text-gray"],
+  .verse-of-day-content [class*="text-gray"],
+  section.bg-black .verse-of-day-content p[class*="text-gray"],
+  section.bg-black .verse-of-day-content [class*="text-gray"],
+  /* Even more specific selectors */
+  section.relative.bg-black .verse-of-day-content p,
+  section.relative.bg-black .verse-of-day-content p.text-gray-800,
+  section.relative.bg-black.text-white .verse-of-day-content p,
+  section.relative.bg-black.text-white .verse-of-day-content p.text-gray-800 {
+    color: #FFFFFF !important;
+  }
+  
+  .verse-of-day-content p:last-child {
+    @apply mb-0;
+  }
+  
+  .verse-of-day-content strong,
+  .verse-of-day-content b {
+    @apply font-normal;
+    color: #FFFFFF !important;
+    font-weight: 400 !important;
+    font-style: italic !important;
+  }
+  
+  .verse-of-day-content em,
+  .verse-of-day-content i {
+    color: #FFFFFF !important;
+    font-style: italic !important;
+  }
+  
+  /* Ensure any nested elements are also white - highest specificity */
+  .verse-of-day-content *,
+  .verse-of-day-content p *,
+  .verse-of-day-content span,
+  .verse-of-day-content div,
+  section.bg-black .verse-of-day-content *,
+  section.relative.bg-black .verse-of-day-content *,
+  section.relative.bg-black.text-white .verse-of-day-content *,
+  section.relative.bg-black.text-white .verse-of-day-content p * {
+    color: #FFFFFF !important;
+  }
+  
+  /* Remove any default text color that might be applied */
+  .verse-of-day-content,
+  .verse-of-day-content * {
+    text-shadow: none !important;
+  }
+  
+  /* Force white color on all text in the verse section */
+  section.bg-black .verse-of-day-content,
+  section.bg-black .verse-of-day-content p,
+  section.bg-black .verse-of-day-content span,
+  section.bg-black .verse-of-day-content div {
+    color: #FFFFFF !important;
+  }
+</style>
+
+<script is:inline>
+  // Force all verse text to be white after page load
+  document.addEventListener('DOMContentLoaded', function() {
+    const verseContent = document.querySelector('.verse-of-day-content');
+    if (verseContent) {
+      // Remove all gray text classes and force white
+      verseContent.querySelectorAll('[class*="text-gray"]').forEach(function(el) {
+        if (el instanceof HTMLElement) {
+          el.className = el.className.replace(/text-gray-\d+/g, 'text-white');
+          el.style.color = '#FFFFFF';
+        }
+      });
+      // Force white on all paragraph elements
+      verseContent.querySelectorAll('p').forEach(function(p) {
+        if (p instanceof HTMLElement) {
+          p.style.color = '#FFFFFF';
+          p.className = p.className.replace(/text-gray-\d+/g, 'text-white');
+        }
+      });
+      // Force white on all text elements
+      verseContent.querySelectorAll('*').forEach(function(el) {
+        if (el instanceof HTMLElement) {
+          if (el.className && typeof el.className === 'string' && el.className.includes('text-gray')) {
+            el.className = el.className.replace(/text-gray-\d+/g, 'text-white');
+          }
+          el.style.color = '#FFFFFF';
+        }
+      });
+    }
+  });
+</script>

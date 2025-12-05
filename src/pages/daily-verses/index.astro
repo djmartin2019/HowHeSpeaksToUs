@@ -1,0 +1,171 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getDailyVerses, formatDate } from '../../lib/contentful';
+import { renderRichText } from '../../lib/rich-text-renderer';
+
+const url = new URL(Astro.request.url);
+const page = parseInt(url.searchParams.get('page') || '1');
+const limit = 12;
+const skip = (page - 1) * limit;
+
+let versesResponse: any = { items: [], total: 0, includes: {} };
+try {
+  versesResponse = await getDailyVerses({ limit, skip });
+} catch (e) {
+  console.error('Error fetching daily verses:', e);
+}
+
+const items: any[] = Array.isArray(versesResponse.items) ? versesResponse.items : [];
+const includes: any = versesResponse?.includes ?? {};
+
+// Filter and validate verses
+const verses = items
+  .filter((it) => it?.sys?.type === 'Entry' && it?.fields && it.fields.date && it.fields.verse)
+  .map((it) => ({
+    ...it,
+    dateString: it.fields.date ? new Date(it.fields.date).toISOString().split('T')[0] : null
+  }));
+
+const totalVerses: number = Number(versesResponse?.total ?? verses.length);
+const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
+const hasNextPage = page < totalPages;
+const hasPrevPage = page > 1;
+---
+
+<Base
+  title="Daily Verses - How God Speaks To Us"
+  description="A collection of daily verses and meditations on God's Word."
+  canonical={`${Astro.url.origin}/daily-verses`}
+>
+  <!-- Header -->
+  <section class="relative bg-black text-white pt-32 pb-16 md:pt-40 md:pb-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center">
+        <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Daily Verses</h1>
+        <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+          A collection of daily verses and meditations on God's Word.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Verses Grid -->
+  <section class="py-16 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {verses.length > 0 ? (
+        <>
+          <!-- Results count -->
+          <div class="mb-8">
+            <p class="text-gray-700">
+              Showing all verses ({totalVerses} total)
+            </p>
+          </div>
+
+          <!-- Verses Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {verses.map((verse) => {
+              // Render verse preview (first paragraph or truncated)
+              let versePreview = '';
+              try {
+                if (verse?.fields?.verse) {
+                  const rendered = renderRichText(verse.fields.verse);
+                  // Extract text from HTML for preview
+                  const textMatch = rendered.match(/<p[^>]*>(.*?)<\/p>/);
+                  versePreview = textMatch ? textMatch[1].replace(/<[^>]*>/g, '').substring(0, 150) : '';
+                  if (versePreview.length >= 150) versePreview += '...';
+                }
+              } catch (e) {
+                console.error('Error rendering verse preview:', e);
+              }
+
+              return (
+                <article 
+                  class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all duration-300"
+                >
+                  <div class="p-6">
+                    <div class="flex items-center text-sm text-gray-600 mb-3">
+                      <time datetime={verse?.fields?.date}>
+                        {formatDate(verse?.fields?.date ?? new Date().toISOString())}
+                      </time>
+                    </div>
+                    {verse?.fields?.passage && (
+                      <h3 class="text-lg font-bold text-black mb-3">
+                        {verse.fields.passage}
+                      </h3>
+                    )}
+                    <div class="mb-4">
+                      {versePreview ? (
+                        <p class="text-gray-800 text-lg leading-relaxed italic mb-2">
+                          "{versePreview}"
+                        </p>
+                      ) : (
+                        <p class="text-gray-500 italic">Verse content available</p>
+                      )}
+                    </div>
+                    <a
+                      href={`/daily-verses/${verse.dateString}`}
+                      class="text-black hover:underline font-semibold transition-colors self-start border-b-2 border-black pb-1 inline-block"
+                    >
+                      Read verse →
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <!-- Pagination -->
+          {totalPages > 1 && (
+            <div class="mt-16 flex justify-center">
+              <nav class="flex items-center space-x-2">
+                {hasPrevPage && (
+                  <a
+                    href={`/daily-verses?page=${page - 1}`}
+                    class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
+                  >
+                    Previous
+                  </a>
+                )}
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <a
+                    href={`/daily-verses?page=${pageNum}`}
+                    class={`px-3 py-2 text-sm font-medium transition-colors ${
+                      pageNum === page
+                        ? 'bg-black text-white border-2 border-black'
+                        : 'text-black bg-white border-2 border-gray-300 hover:border-black'
+                    }`}
+                  >
+                    {pageNum}
+                  </a>
+                ))}
+
+                {hasNextPage && (
+                  <a
+                    href={`/daily-verses?page=${page + 1}`}
+                    class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
+                  >
+                    Next
+                  </a>
+                )}
+              </nav>
+            </div>
+          )}
+        </>
+      ) : (
+        <div class="text-center py-16">
+          <div class="mx-auto w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-6">
+            <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-medium text-black mb-2">No verses found</h3>
+          <p class="text-gray-700 mb-6">
+            No daily verses available at the moment.
+          </p>
+        </div>
+      )}
+    </div>
+  </section>
+</Base>
+

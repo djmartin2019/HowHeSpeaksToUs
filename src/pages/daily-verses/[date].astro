@@ -1,0 +1,315 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getDailyVerses, getDailyVerseByDate, formatDate } from '../../lib/contentful';
+import { generateBreadcrumbStructuredData } from '../../lib/seo';
+import { renderRichText } from '../../lib/rich-text-renderer';
+import { BLOCKS } from '@contentful/rich-text-types';
+import type { DailyVerse } from '../../types/contentful';
+
+export async function getStaticPaths() {
+  try {
+    const versesResponse = await getDailyVerses({ limit: 1000 });
+    
+    // Debug: Log first verse to see structure
+    if (versesResponse.items && versesResponse.items.length > 0) {
+      const firstVerse = versesResponse.items[0];
+      console.log('First verse structure:', {
+        id: firstVerse?.sys?.id,
+        hasFields: !!firstVerse?.fields,
+        verseField: firstVerse?.fields?.verse,
+        verseType: typeof firstVerse?.fields?.verse,
+        verseIsEmpty: firstVerse?.fields?.verse && typeof firstVerse.fields.verse === 'object' && Object.keys(firstVerse.fields.verse).length === 0,
+        allFieldKeys: firstVerse?.fields ? Object.keys(firstVerse.fields) : []
+      });
+    }
+    
+    // Filter verses to ensure they have the required structure
+    const validVerses = (versesResponse.items || [])
+      .filter((verse: any) => {
+        if (verse?.sys?.type !== 'Entry' || !verse?.fields) return false;
+        // Check if verse has date
+        const hasDate = !!verse.fields.date;
+        // Check if verse has content - it might be an empty object, so check if it has actual content
+        const verseField = verse.fields.verse;
+        const hasVerse = verseField && (
+          typeof verseField === 'string' || 
+          (typeof verseField === 'object' && verseField !== null && (
+            verseField.nodeType === 'document' || 
+            verseField.content || 
+            Object.keys(verseField).length > 0
+          ))
+        );
+        return hasDate && hasVerse;
+      })
+      .map((verse: any) => {
+        const dateValue = verse.fields.date;
+        const date = dateValue ? new Date(dateValue) : null;
+        const dateString = date ? date.toISOString().split('T')[0] : null;
+        
+        // Don't normalize the verse field - pass it through as-is like the other pages do
+        // renderRichText will handle it properly when we have locale specified in the query
+        return {
+          ...verse,
+          dateString
+        };
+      });
+    
+    console.log('📝 Generated daily verse dates:', validVerses.map((v: any) => v.dateString));
+    console.log('📊 Total valid verses:', validVerses.length);
+    
+    return validVerses.map((verse: DailyVerse & { dateString: string }) => ({
+      params: { date: verse.dateString },
+      props: { 
+        verse,
+        includes: versesResponse.includes || {}
+      },
+    }));
+  } catch (error) {
+    console.error('Error generating static paths for daily verses:', error);
+    return [];
+  }
+}
+
+export interface Props {
+  verse: DailyVerse & { dateString: string };
+  includes: any;
+}
+
+const { verse: verseFromProps } = Astro.props;
+const dateParam = Astro.params.date;
+
+// Fetch the verse directly using the date parameter - same approach as other pages
+// This ensures we get the fresh data with proper locale handling
+let verse = verseFromProps;
+try {
+  if (dateParam) {
+    const fetchedVerse = await getDailyVerseByDate(dateParam);
+    if (fetchedVerse) {
+      verse = fetchedVerse;
+    }
+  }
+} catch (error) {
+  console.error('Error fetching verse by date:', error);
+  // Fall back to props verse
+}
+
+// Generate SEO metadata
+const defaultDate = verse?.fields?.date || '';
+const passageText = verse?.fields?.passage ? `${verse.fields.passage} - ` : '';
+const seoTitle = `Daily Verse - ${passageText}${formatDate(defaultDate)}`;
+const seoDescription = verse?.fields?.passage 
+  ? `Daily verse ${verse.fields.passage} and meditation for ${formatDate(defaultDate)}`
+  : `Daily verse and meditation for ${formatDate(defaultDate)}`;
+
+// Render the verse content - use the same simple approach as homepage and index page
+let verseHtml = '';
+try {
+  if (verse?.fields?.verse) {
+    // Just pass it directly to renderRichText like the other pages do
+    verseHtml = renderRichText(verse.fields.verse, { 
+      renderNode: {
+        [BLOCKS.EMBEDDED_ASSET]: (node: any) => {
+          const asset = node.data?.target;
+          if (asset) {
+            // Handle embedded assets if needed
+            return '';
+          }
+          return '';
+        }
+      }
+    });
+  }
+} catch (error) {
+  console.error('Error rendering verse content:', error);
+  verseHtml = `<div class="p-4 bg-red-50 border border-red-200 rounded">
+    <p class="text-red-800">Error rendering content. Please check the console for details.</p>
+    <pre class="text-xs mt-2">${String(error)}</pre>
+  </div>`;
+}
+
+// Render the description if available
+let descriptionHtml = '';
+try {
+  if (verse?.fields?.description) {
+    descriptionHtml = renderRichText(verse.fields.description);
+  }
+} catch (error) {
+  console.error('Error rendering description:', error);
+}
+
+// Generate breadcrumb structured data
+const breadcrumbItems = [
+  { name: 'Home', url: Astro.url.origin },
+  { name: 'Daily Verses', url: `${Astro.url.origin}/daily-verses` },
+  { name: formatDate(verse.fields.date), url: Astro.url.href }
+];
+const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbItems);
+---
+
+<Base 
+  title={seoTitle}
+  description={seoDescription}
+  hideNav={true}
+>
+  <!-- Breadcrumb Structured Data -->
+  <script type="application/ld+json" set:html={JSON.stringify(breadcrumbStructuredData)} />
+
+  <article class="bg-white">
+    <!-- Custom Navbar for Daily Verses -->
+    <nav class="bg-black text-white" role="navigation" aria-label="Daily verse navigation">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16 md:h-20">
+          <!-- Breadcrumb on the left -->
+          <div class="flex items-center">
+            <ol class="flex items-center space-x-2 text-sm">
+              <li>
+                <a href="/" class="hover:text-gray-300 transition-colors">Home</a>
+              </li>
+              <li>
+                <span class="mx-2">></span>
+              </li>
+              <li>
+                <a href="/daily-verses" class="hover:text-gray-300 transition-colors">Daily Verses</a>
+              </li>
+              <li>
+                <span class="mx-2">></span>
+              </li>
+              <li>
+                <span class="font-medium" aria-current="page">
+                  {formatDate(verse.fields.date)}
+                </span>
+              </li>
+            </ol>
+          </div>
+          
+          <!-- Navigation links on the right -->
+          <div class="hidden md:flex items-center space-x-6 lg:space-x-8">
+            <a href="/" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              HOME
+            </a>
+            <a href="/blog" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              BLOG
+            </a>
+            <a href="/daily-verses" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              DAILY VERSES
+            </a>
+            <a href="/about" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              ABOUT
+            </a>
+            <a href="/contact" class="text-sm md:text-base font-medium hover:text-gray-300 transition-colors uppercase">
+              CONTACT
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Daily Verse Hero Section -->
+    <section class="bg-black text-white py-16 md:py-20">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4">
+          Daily Verse
+        </h1>
+        <p class="text-xl text-gray-400">
+          {verse?.fields?.date ? formatDate(verse.fields.date) : ''}
+        </p>
+      </div>
+    </section>
+
+    <!-- Daily Verse Content -->
+    <section class="py-16 bg-white">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Passage Reference -->
+        {verse?.fields?.passage && (
+          <div class="text-center mb-8">
+            <h2 class="text-3xl md:text-4xl font-bold text-black">
+              {verse.fields.passage}
+            </h2>
+          </div>
+        )}
+
+        <!-- Verse Content -->
+        {verseHtml ? (
+          <div 
+            class="verse-content prose prose-lg max-w-none mb-12"
+            set:html={verseHtml}
+          />
+        ) : (
+          <div class="text-gray-800 mb-12">
+            <p>No verse content available.</p>
+          </div>
+        )}
+
+        <!-- Description/Blurb -->
+        {descriptionHtml && (
+          <div class="mt-12 pt-8 border-t-2 border-black">
+            <div 
+              class="description-content prose prose-lg max-w-none"
+              set:html={descriptionHtml}
+            />
+          </div>
+        )}
+      </div>
+    </section>
+
+    <!-- Back to Daily Verses -->
+    <section class="py-16 bg-white">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <a 
+          href="/daily-verses"
+          class="inline-flex items-center px-6 py-3 border-2 border-black text-black font-semibold hover:bg-black hover:text-white transition-colors"
+        >
+          <svg class="mr-2 -ml-1 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Daily Verses
+        </a>
+      </div>
+    </section>
+  </article>
+</Base>
+
+<style>
+  /* Custom styles for the daily verse */
+  .verse-content {
+    @apply text-center;
+  }
+  
+  .verse-content p {
+    @apply text-2xl md:text-3xl text-gray-900 mb-6 leading-relaxed italic font-serif;
+  }
+  
+  .verse-content h2,
+  .verse-content h3 {
+    @apply text-black font-bold;
+  }
+  
+  .description-content h2 {
+    @apply text-2xl font-bold text-black mt-8 mb-4;
+  }
+  
+  .description-content h3 {
+    @apply text-xl font-semibold text-black mt-6 mb-3;
+  }
+  
+  .description-content p {
+    @apply text-gray-800 mb-4 leading-relaxed;
+  }
+  
+  .description-content ul, .description-content ol {
+    @apply mb-4 pl-6;
+  }
+  
+  .description-content li {
+    @apply text-gray-800 mb-2;
+  }
+  
+  .description-content blockquote {
+    @apply border-l-4 border-black pl-4 py-2 my-6 bg-gray-50;
+  }
+  
+  .description-content blockquote p {
+    @apply text-gray-800 italic mb-0;
+  }
+</style>
+
