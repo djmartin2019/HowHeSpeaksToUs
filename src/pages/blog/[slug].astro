@@ -95,7 +95,8 @@ if (post?.fields?.featuredImage?.sys?.id) {
 // Generate SEO metadata
 const seoTitle = post.fields.title;
 const seoDescription = post.fields.excerpt || `Read ${post.fields.title}`;
-const featuredImage = featuredImageResolved ? getAssetUrl(featuredImageResolved, 1200, 630) : undefined;
+// Use 3:2 ratio for featured image (1200x800)
+const featuredImage = featuredImageResolved ? getAssetUrl(featuredImageResolved, 1200, 800) : undefined;
 
 // Calculate reading time and word count (placeholder - in real implementation, parse rich text)
 const wordCount = Math.max(300, Math.floor((post.fields.excerpt?.length || 0) * 2.5));
@@ -243,14 +244,13 @@ try {
     {featuredImage && (
       <section class="bg-white py-8">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="w-full overflow-hidden">
+          <div class="w-full aspect-[3/2] overflow-hidden">
             <img 
               src={featuredImage}
               alt={post?.fields?.title ?? 'Blog post image'}
-              class="w-full h-auto object-contain mx-auto"
+              class="w-full h-full object-cover object-center"
               loading="eager"
               decoding="async"
-              style="max-width: 100%; height: auto; display: block;"
             />
           </div>
         </div>
@@ -331,21 +331,23 @@ try {
                 ? resolveAsset(relatedPost.fields.featuredImage, includes)
                 : null;
               const relatedPostImageUrl = relatedPostImage 
-                ? getAssetUrl(relatedPostImage, 400, 225)
+                ? getAssetUrl(relatedPostImage, 400, 267)
                 : null;
               
               return (
                 <article class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all">
                   {relatedPostImageUrl && (
-                    <img 
-                      src={relatedPostImageUrl}
-                      alt={relatedPost?.fields?.title ?? 'Related post image'}
-                      class="w-full h-48 object-cover grayscale hover:grayscale-0 transition-all"
-                      loading="lazy"
-                      decoding="async"
-                      width="400"
-                      height="225"
-                    />
+                    <div class="w-full aspect-[3/2] overflow-hidden">
+                      <img 
+                        src={relatedPostImageUrl}
+                        alt={relatedPost?.fields?.title ?? 'Related post image'}
+                        class="w-full h-full object-cover object-center grayscale hover:grayscale-0 transition-all"
+                        loading="lazy"
+                        decoding="async"
+                        width="400"
+                        height="267"
+                      />
+                    </div>
                   )}
                 <div class="p-6">
                   <h3 class="text-xl font-bold text-black mb-2">

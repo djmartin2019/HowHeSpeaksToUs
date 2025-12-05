@@ -124,15 +124,15 @@ try {
     data-tags={post?.fields?.tags?.join(',') || ''}
   >
     {post.featuredResolved && (
-      <div class="w-full h-48 overflow-hidden">
+      <div class="w-full aspect-[3/2] overflow-hidden">
         <img
-          src={getAssetUrl(post.featuredResolved, 800, 450)}
+          src={getAssetUrl(post.featuredResolved, 800, 533)}
           alt={post.featuredResolved?.fields?.title ?? post.fields.title}
-          class="w-full h-48 object-cover grayscale hover:grayscale-0 transition-all"
+          class="w-full h-full object-cover object-center grayscale hover:grayscale-0 transition-all"
           loading="lazy"
           decoding="async"
           width="800"
-          height="450"
+          height="533"
           fetchpriority="low"
         />
       </div>

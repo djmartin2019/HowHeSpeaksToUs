@@ -197,15 +197,15 @@ try {
           {recentPosts.map((post) => (
             <article class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all">
               {post.featuredImageResolved && (
-                <div class="aspect-w-16 aspect-h-9">
+                <div class="w-full aspect-[3/2] overflow-hidden">
                   <img
-                    src={getAssetUrl(post.featuredImageResolved, 400, 225)}
+                    src={getAssetUrl(post.featuredImageResolved, 400, 267)}
                     alt={post.featuredImageResolved?.fields?.title || post?.fields?.title || 'Blog post image'}
-                    class="w-full h-48 object-cover grayscale hover:grayscale-0 transition-all"
+                    class="w-full h-full object-cover object-center grayscale hover:grayscale-0 transition-all"
                     loading="lazy"
                     decoding="async"
                     width="400"
-                    height="225"
+                    height="267"
                     fetchpriority="low"
                   />
                 </div>
