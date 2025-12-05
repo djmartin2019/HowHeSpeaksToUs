@@ -33,18 +33,22 @@ const {
 
 // Default meta description
 const metaDescription = description || "A daily devotional and meditations on God's Word. Discover how God speaks through His Word, His Spirit, His people, wisdom, and circumstances.";
-// Ensure image is always an absolute URL
+const canonicalUrl = canonical || Astro.url.href;
+
+// Get the base URL from canonical URL to ensure production URL is used
+const baseUrl = canonicalUrl ? new URL(canonicalUrl).origin : Astro.url.origin;
+
+// Ensure image is always an absolute URL using the correct base URL
 let metaImage: string;
 if (image) {
-  // If image is already absolute, use it; otherwise make it absolute
+  // If image is already absolute, use it; otherwise make it absolute using baseUrl
   metaImage = image.startsWith('http://') || image.startsWith('https://') 
     ? image 
-    : new URL(image, Astro.url.origin).href;
+    : new URL(image, baseUrl).href;
 } else {
-  // Default image - always make it absolute
-  metaImage = new URL("/howgodspeakstous.png", Astro.url.origin).href;
+  // Default image - always make it absolute using baseUrl
+  metaImage = new URL("/howgodspeakstous.png", baseUrl).href;
 }
-const canonicalUrl = canonical || Astro.url.href;
 
 // Generate enhanced structured data
 const baseStructuredData = {
