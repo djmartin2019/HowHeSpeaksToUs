@@ -5,11 +5,17 @@ const currentPath = Astro.url.pathname;
 const navItems = [
   { href: '/', label: 'Home' },
   { href: '/blog', label: 'Blog' },
+  { href: '/daily-verses', label: 'Daily Verses' },
   { href: '/about', label: 'About' },
   { href: '/contact', label: 'Contact' },
 ];
 
-const isActive = (href: string) => currentPath === href;
+const isActive = (href: string) => {
+  if (href === '/daily-verses') {
+    return currentPath === href || currentPath.startsWith('/daily-verses/');
+  }
+  return currentPath === href;
+};
 ---
 
 <nav class="absolute top-0 left-0 right-0 z-50 bg-transparent" role="navigation" aria-label="Main navigation">
