@@ -33,6 +33,7 @@ export interface DailyVerse {
     date: string; // Date & time (display date)
     description?: any; // Rich text (blurb about the verse)
     passage?: string; // Long text - Bible reference (e.g., "John 3:16")
+    tag?: string[]; // Short text, list - tags for filtering
   };
 }
 

@@ -6,6 +6,11 @@ import { renderRichText } from '../../lib/rich-text-renderer';
 // Disable prerendering to allow query parameters to work dynamically
 export const prerender = false;
 
+// Read tag query parameter
+const url = new URL(Astro.request.url);
+const tagParam = url.searchParams.get('tag') || '';
+const selectedTags = tagParam ? tagParam.split(',').map(t => t.trim()).filter(t => t) : [];
+
 // Client-side pagination - no need to read page here
 const limit = 12;
 
@@ -34,8 +39,34 @@ const allValidVerses = allItems
     };
   });
 
-// For client-side pagination, we'll render ALL verses and paginate in JavaScript
-const totalVerses = allValidVerses.length;
+// Extract all unique tags from verses
+let allTags: string[] = [];
+try {
+  const tagSet = new Set<string>();
+  allValidVerses.forEach((verse) => {
+    const tags = verse?.fields?.tag || [];
+    if (Array.isArray(tags)) {
+      tags.forEach((tag: string) => tagSet.add(tag));
+    }
+  });
+  allTags = Array.from(tagSet).sort();
+} catch (e) {
+  console.error('Error extracting tags:', e);
+}
+
+// Filter verses by selected tags (if any)
+let filteredVerses = allValidVerses;
+if (selectedTags.length > 0) {
+  filteredVerses = allValidVerses.filter((verse) => {
+    const verseTags = verse?.fields?.tag || [];
+    if (!Array.isArray(verseTags)) return false;
+    // Check if verse has at least one of the selected tags
+    return selectedTags.some(tag => verseTags.includes(tag));
+  });
+}
+
+// For client-side pagination, we'll render filtered verses and paginate in JavaScript
+const totalVerses = filteredVerses.length;
 const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
 ---
 
@@ -53,6 +84,32 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
           A collection of daily verses and meditations on God's Word.
         </p>
       </div>
+
+      <!-- Tag Filtering -->
+      {allTags.length > 0 && (
+        <div class="mt-12">
+          <div class="flex flex-wrap justify-center gap-2" id="tag-filter-container">
+            <button
+              type="button"
+              class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white text-black border-2 border-white"
+              data-tag="all"
+              id="tag-all"
+            >
+              All Verses
+            </button>
+            {allTags.map((tagName) => (
+              <button
+                type="button"
+                class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-gray-300 border border-gray-600 hover:border-white hover:text-white"
+                data-tag={tagName}
+                id={`tag-${tagName}`}
+              >
+                {tagName}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   </section>
 
@@ -64,7 +121,11 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
           <!-- Results count -->
           <div class="mb-8">
             <p class="text-gray-700" id="results-count">
-              Showing page 1 of {totalPages} ({totalVerses} total verses)
+              {selectedTags.length > 0 
+                ? `Showing verses tagged with "${selectedTags.join('", "')}"` 
+                : 'Showing all verses'
+              }
+              ({totalVerses} total)
             </p>
           </div>
 
@@ -75,7 +136,7 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
             data-total-verses={totalVerses}
             data-total-pages={totalPages}
           >
-            {allValidVerses.map((verse, index) => {
+            {filteredVerses.map((verse, index) => {
               // Render verse preview (first paragraph or truncated)
               let versePreview = '';
               try {
@@ -94,10 +155,14 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
               const versePage = Math.floor(index / limit) + 1;
               const isVisible = versePage === 1; // Show first page by default
               
+              const verseTags = verse?.fields?.tag || [];
+              const tagsString = Array.isArray(verseTags) ? verseTags.join(',') : '';
+              
               return (
                 <article 
                   class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all duration-300 verse-item"
                   data-page={versePage}
+                  data-tags={tagsString}
                   style={isVisible ? '' : 'display: none;'}
                 >
                   <div class="p-6">
@@ -120,12 +185,23 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
                         <p class="text-gray-500 italic">Verse content available</p>
                       )}
                     </div>
-                    <a
-                      href={`/daily-verses/${verse.dateString}`}
-                      class="text-black hover:underline font-semibold transition-colors self-start border-b-2 border-black pb-1 inline-block"
-                    >
-                      Read verse →
-                    </a>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                      <a
+                        href={`/daily-verses/${verse.dateString}`}
+                        class="text-black hover:underline font-semibold transition-colors self-start border-b-2 border-black pb-1"
+                      >
+                        Read verse →
+                      </a>
+                      {Array.isArray(verseTags) && verseTags.length > 0 && (
+                        <div class="flex flex-wrap gap-2">
+                          {verseTags.slice(0, 2).map((tagName: string) => (
+                            <span class="text-xs bg-gray-100 text-black px-3 py-1 border border-gray-300 whitespace-nowrap">
+                              {tagName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </article>
               );
@@ -191,75 +267,153 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
   (function() {
     const limit = 12;
     const grid = document.getElementById('verses-grid');
-    const totalVersesCount = grid ? parseInt(grid.getAttribute('data-total-verses') || '0', 10) : 0;
-    const totalPagesCount = grid ? parseInt(grid.getAttribute('data-total-pages') || '1', 10) : 1;
+    
+    // Get selected tags from URL
+    function getSelectedTags() {
+      const params = new URLSearchParams(window.location.search);
+      const tagParam = params.get('tag') || '';
+      return tagParam ? tagParam.split(',').map(t => t.trim()).filter(t => t) : [];
+    }
+    
+    // Filter verses by tags
+    function getFilteredVerses() {
+      const selectedTags = getSelectedTags();
+      const allVerses = Array.from(document.querySelectorAll('.verse-item'));
+      
+      if (selectedTags.length === 0) {
+        return allVerses;
+      }
+      
+      return allVerses.filter((verse) => {
+        const verseTags = verse.getAttribute('data-tags') || '';
+        const tags = verseTags ? verseTags.split(',').map(t => t.trim()) : [];
+        return selectedTags.some(tag => tags.includes(tag));
+      });
+    }
     
     // Get current page from URL or default to 1
     function getCurrentPage() {
       const params = new URLSearchParams(window.location.search);
       const page = parseInt(params.get('page') || '1', 10);
-      return Math.max(1, Math.min(page, totalPagesCount));
+      const filteredVerses = getFilteredVerses();
+      const totalPages = Math.max(1, Math.ceil(filteredVerses.length / limit));
+      return Math.max(1, Math.min(page, totalPages));
     }
     
     // Update URL without reload
-    function updateURL(page) {
+    function updateURL(page, tags) {
       const url = new URL(window.location.href);
       if (page === 1) {
         url.searchParams.delete('page');
       } else {
         url.searchParams.set('page', page.toString());
       }
-      window.history.pushState({ page }, '', url.toString());
+      if (tags.length === 0) {
+        url.searchParams.delete('tag');
+      } else {
+        url.searchParams.set('tag', tags.join(','));
+      }
+      window.history.pushState({ page, tags }, '', url.toString());
     }
     
-    // Show the specified page
+    // Show the specified page with tag filtering
     function showPage(page) {
-      const verseItems = document.querySelectorAll('.verse-item');
+      const selectedTags = getSelectedTags();
+      const filteredVerses = getFilteredVerses();
+      const totalVerses = filteredVerses.length;
+      const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
+      
+      // Hide all verses first
+      document.querySelectorAll('.verse-item').forEach((item) => {
+        item.style.display = 'none';
+      });
+      
+      // Show filtered verses for current page
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
       
-      verseItems.forEach((item, index) => {
+      filteredVerses.forEach((verse, index) => {
         if (index >= startIndex && index < endIndex) {
-          item.style.display = '';
-        } else {
-          item.style.display = 'none';
+          verse.style.display = '';
         }
       });
       
       // Update results count
       const resultsCount = document.getElementById('results-count');
       if (resultsCount) {
-        resultsCount.textContent = `Showing page ${page} of ${totalPagesCount} (${totalVersesCount} total verses)`;
+        const tagText = selectedTags.length > 0 
+          ? `Showing verses tagged with "${selectedTags.join('", "')}"` 
+          : 'Showing all verses';
+        resultsCount.textContent = `${tagText} (${totalVerses} total)`;
+      }
+      
+      // Update grid data attributes
+      if (grid) {
+        grid.setAttribute('data-total-verses', totalVerses.toString());
+        grid.setAttribute('data-total-pages', totalPages.toString());
       }
       
       // Update pagination buttons
-      const prevBtn = document.getElementById('prev-btn');
-      const nextBtn = document.getElementById('next-btn');
-      const pageBtns = document.querySelectorAll('.pagination-btn');
-      
-      if (prevBtn) {
-        prevBtn.style.display = page > 1 ? '' : 'none';
+      const paginationNav = document.getElementById('pagination-nav');
+      if (paginationNav && totalPages > 1) {
+        paginationNav.style.display = '';
+        
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        
+        if (prevBtn) {
+          prevBtn.style.display = page > 1 ? '' : 'none';
+        }
+        if (nextBtn) {
+          nextBtn.style.display = page < totalPages ? '' : 'none';
+        }
+        
+        // Update page number buttons
+        const pageBtns = document.querySelectorAll('.pagination-btn');
+        pageBtns.forEach((btn) => {
+          const btnPage = parseInt(btn.getAttribute('data-page') || '1', 10);
+          if (btnPage === page) {
+            btn.className = 'px-3 py-2 text-sm font-medium transition-colors pagination-btn bg-black text-white border-2 border-black';
+          } else {
+            btn.className = 'px-3 py-2 text-sm font-medium transition-colors pagination-btn text-black bg-white border-2 border-gray-300 hover:border-black';
+          }
+        });
+      } else if (paginationNav) {
+        paginationNav.style.display = 'none';
       }
-      if (nextBtn) {
-        nextBtn.style.display = page < totalPagesCount ? '' : 'none';
-      }
+    }
+    
+    // Update tag filter button states
+    function updateTagButtons() {
+      const selectedTags = getSelectedTags();
+      const allBtn = document.getElementById('tag-all');
+      const tagBtns = document.querySelectorAll('[data-tag]:not([data-tag="all"])');
       
-      pageBtns.forEach((btn) => {
-        const btnPage = parseInt(btn.getAttribute('data-page') || '1', 10);
-        if (btnPage === page) {
-          btn.className = 'px-3 py-2 text-sm font-medium transition-colors pagination-btn bg-black text-white border-2 border-black';
+      if (allBtn) {
+        if (selectedTags.length === 0) {
+          allBtn.className = 'px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white text-black border-2 border-white';
         } else {
-          btn.className = 'px-3 py-2 text-sm font-medium transition-colors pagination-btn text-black bg-white border-2 border-gray-300 hover:border-black';
+          allBtn.className = 'px-4 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-gray-300 border border-gray-600 hover:border-white hover:text-white';
+        }
+      }
+      
+      tagBtns.forEach((btn) => {
+        const tagName = btn.getAttribute('data-tag');
+        if (selectedTags.includes(tagName)) {
+          btn.className = 'px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white text-black border-2 border-white';
+        } else {
+          btn.className = 'px-4 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-gray-300 border border-gray-600 hover:border-white hover:text-white';
         }
       });
     }
     
-    // Initialize pagination
+    // Initialize pagination and tag filtering
     function initPagination() {
       const currentPage = getCurrentPage();
       showPage(currentPage);
+      updateTagButtons();
       
-      // Set up event listeners
+      // Set up pagination event listeners
       const prevBtn = document.getElementById('prev-btn');
       const nextBtn = document.getElementById('next-btn');
       const pageBtns = document.querySelectorAll('.pagination-btn');
@@ -269,9 +423,10 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
           const page = getCurrentPage();
           if (page > 1) {
             const newPage = page - 1;
-            updateURL(newPage);
+            const selectedTags = getSelectedTags();
+            updateURL(newPage, selectedTags);
             showPage(newPage);
-            // Scroll to top
+            updateTagButtons();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         });
@@ -280,11 +435,14 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
       if (nextBtn) {
         nextBtn.addEventListener('click', () => {
           const page = getCurrentPage();
-          if (page < totalPagesCount) {
+          const filteredVerses = getFilteredVerses();
+          const totalPages = Math.max(1, Math.ceil(filteredVerses.length / limit));
+          if (page < totalPages) {
             const newPage = page + 1;
-            updateURL(newPage);
+            const selectedTags = getSelectedTags();
+            updateURL(newPage, selectedTags);
             showPage(newPage);
-            // Scroll to top
+            updateTagButtons();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         });
@@ -293,9 +451,44 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
       pageBtns.forEach((btn) => {
         btn.addEventListener('click', () => {
           const page = parseInt(btn.getAttribute('data-page') || '1', 10);
-          updateURL(page);
+          const selectedTags = getSelectedTags();
+          updateURL(page, selectedTags);
           showPage(page);
-          // Scroll to top
+          updateTagButtons();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
+      
+      // Set up tag filter event listeners
+      const allBtn = document.getElementById('tag-all');
+      const tagBtns = document.querySelectorAll('[data-tag]:not([data-tag="all"])');
+      
+      if (allBtn) {
+        allBtn.addEventListener('click', () => {
+          updateURL(1, []);
+          showPage(1);
+          updateTagButtons();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+      
+      tagBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const tagName = btn.getAttribute('data-tag');
+          const currentTags = getSelectedTags();
+          let newTags = [];
+          
+          if (currentTags.includes(tagName)) {
+            // Remove tag if already selected
+            newTags = currentTags.filter(t => t !== tagName);
+          } else {
+            // Add tag
+            newTags = [...currentTags, tagName];
+          }
+          
+          updateURL(1, newTags);
+          showPage(1);
+          updateTagButtons();
           window.scrollTo({ top: 0, behavior: 'smooth' });
         });
       });
@@ -304,6 +497,7 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
       window.addEventListener('popstate', () => {
         const page = getCurrentPage();
         showPage(page);
+        updateTagButtons();
       });
     }
     

@@ -249,6 +249,23 @@ const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbItem
             />
           </div>
         )}
+
+        <!-- Tags -->
+        {verse?.fields?.tag && Array.isArray(verse.fields.tag) && verse.fields.tag.length > 0 && (
+          <div class="mt-12 pt-8 border-t-2 border-black">
+            <div class="flex flex-wrap gap-3 items-center">
+              <span class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tags:</span>
+              {verse.fields.tag.filter((t: any) => t).map((tagName: string) => (
+                <a
+                  href={`/daily-verses?tag=${encodeURIComponent(tagName || '')}`}
+                  class="text-sm bg-gray-100 text-black px-4 py-2 border border-gray-300 hover:bg-black hover:text-white hover:border-black transition-colors"
+                >
+                  {tagName}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
 
