@@ -2,6 +2,7 @@
 import Base from '../layouts/Base.astro';
 import { getRecentBlogPosts, resolveAsset, getTodayVerse, getRecentDailyVerses, formatDate, getAssetUrl } from '../lib/contentful';
 import { renderRichText } from '../lib/rich-text-renderer';
+import { seoConfig } from '../config/seo';
 
 // Fetch recent blog posts for the homepage
 let recentPosts = [];
@@ -86,7 +87,7 @@ try {
   title="How God Speaks To Us - A Daily Devotional"
   description="A daily devotional and meditations on God's Word. Discover how God speaks through His Word, His Spirit, His people, wisdom, and circumstances."
   image="/howgodspeakstous.png"
-  canonical={Astro.url.origin}
+  canonical={seoConfig.site.url}
 >
   <!-- Hero Section - Verse of the Day -->
   <section class="relative bg-black text-white pt-32 pb-20 md:pt-40 md:pb-32">
