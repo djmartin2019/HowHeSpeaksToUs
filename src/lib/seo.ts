@@ -47,7 +47,7 @@ export function generateOrganizationStructuredData(domain: string) {
     "@type": "Organization",
     "name": "Your Company",
     "url": domain,
-    "logo": `${domain}/favicon.svg`,
+    "logo": `${domain}/favicon.png`,
     "sameAs": [
       "https://github.com/djmartin2019",
       "https://x.com/djmartin2019"
@@ -105,7 +105,7 @@ export function generateArticleStructuredData(article: {
       "name": "Your Company",
       "logo": {
         "@type": "ImageObject",
-        "url": article.url.replace(/\/[^\/]*$/, '/favicon.svg')
+        "url": article.url.replace(/\/[^\/]*$/, '/favicon.png')
       }
     },
     "datePublished": article.publishedTime,
@@ -118,7 +118,7 @@ export function generateArticleStructuredData(article: {
     "articleSection": article.category,
     "wordCount": article.wordCount,
     "timeRequired": article.readingTime ? `PT${article.readingTime}M` : undefined,
-    "genre": "Technology",
+    "genre": "Religion & Spirituality",
     "about": article.tags?.map(tag => ({
       "@type": "Thing",
       "name": tag

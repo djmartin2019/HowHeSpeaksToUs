@@ -32,8 +32,8 @@ const {
 } = Astro.props;
 
 // Default meta description
-const metaDescription = description || "A modern website built with Astro and Contentful CMS";
-const metaImage = image || "/favicon.svg";
+const metaDescription = description || "A daily devotional and meditations on God's Word. Discover how God speaks through His Word, His Spirit, His people, wisdom, and circumstances.";
+const metaImage = image || "/howgodspeakstous.png";
 const canonicalUrl = canonical || Astro.url.href;
 
 // Generate enhanced structured data
@@ -57,10 +57,10 @@ const articleStructuredData = type === "article" ? {
   } : undefined,
   "publisher": {
     "@type": "Organization",
-    "name": "Your Company",
+    "name": "How God Speaks To Us",
     "logo": {
       "@type": "ImageObject",
-      "url": `${Astro.url.origin}/favicon.svg`
+      "url": `${Astro.url.origin}/favicon.png`
     }
   },
   "datePublished": publishedTime,
@@ -73,7 +73,7 @@ const articleStructuredData = type === "article" ? {
   "articleSection": category,
   "wordCount": wordCount,
   "timeRequired": readingTime ? `PT${readingTime}M` : undefined,
-  "genre": "Technology",
+  "genre": "Religion & Spirituality",
   "about": tags?.map(tag => ({
     "@type": "Thing",
     "name": tag
@@ -83,9 +83,17 @@ const articleStructuredData = type === "article" ? {
 const websiteStructuredData = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  "name": "Your Company",
-  "description": "A modern website built with Astro and Contentful CMS",
+  "name": "How God Speaks To Us",
+  "description": "A daily devotional and meditations on God's Word. Discover how God speaks through His Word, His Spirit, His people, wisdom, and circumstances.",
   "url": Astro.url.origin,
+  "publisher": {
+    "@type": "Organization",
+    "name": "How God Speaks To Us",
+    "logo": {
+      "@type": "ImageObject",
+      "url": `${Astro.url.origin}/favicon.png`
+    }
+  },
   "potentialAction": {
     "@type": "SearchAction",
     "target": `${Astro.url.origin}/blog?tag={search_term_string}`,
@@ -96,8 +104,11 @@ const websiteStructuredData = {
 
 <!-- Enhanced Meta Tags -->
 <meta name="generator" content="Astro" />
-<meta name="theme-color" content="#3b82f6" />
-<meta name="msapplication-TileColor" content="#3b82f6" />
+<meta name="theme-color" content="#000000" />
+<meta name="msapplication-TileColor" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="How God Speaks To Us" />
 
 <!-- Meta Description - Always present -->
 <meta name="description" content={metaDescription} />
@@ -132,21 +143,38 @@ const websiteStructuredData = {
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={metaDescription} />
-<meta property="og:image" content={new URL(metaImage, Astro.url)} />
+<meta property="og:image" content={new URL(metaImage, canonicalUrl).href} />
+<meta property="og:image:secure_url" content={new URL(metaImage, canonicalUrl).href} />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:alt" content={title} />
-<meta property="og:site_name" content="Your Company" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:site_name" content="How God Speaks To Us" />
 <meta property="og:locale" content="en_US" />
+<meta property="og:locale:alternate" content="en_US" />
 
 <!-- Twitter -->
-<meta property="twitter:card" content="summary_large_image" />
-<meta property="twitter:url" content={canonicalUrl} />
-<meta property="twitter:title" content={title} />
-<meta property="twitter:description" content={metaDescription} />
-<meta property="twitter:image" content={new URL(metaImage, Astro.url)} />
-<meta property="twitter:image:alt" content={title} />
-{author && <meta property="twitter:creator" content={`@${author.toLowerCase().replace(/\s+/g, '')}`} />}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:url" content={canonicalUrl} />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={metaDescription} />
+<meta name="twitter:image" content={new URL(metaImage, canonicalUrl).href} />
+<meta name="twitter:image:alt" content={title} />
+<meta name="twitter:site" content="@djmartin2019" />
+{author && <meta name="twitter:creator" content="@djmartin2019" />}
+
+<!-- Organization Structured Data -->
+<script type="application/ld+json" set:html={JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "How God Speaks To Us",
+  "url": Astro.url.origin,
+  "logo": `${Astro.url.origin}/favicon.png`,
+  "description": "A daily devotional and meditations on God's Word. Discover how God speaks through His Word, His Spirit, His people, wisdom, and circumstances.",
+  "sameAs": [
+    "https://github.com/djmartin2019"
+  ]
+})} />
 
 <!-- Structured Data -->
 <script type="application/ld+json" set:html={JSON.stringify(articleStructuredData)} />

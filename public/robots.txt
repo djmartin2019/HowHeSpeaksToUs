@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://your-domain.com/sitemap-index.xml
+Sitemap: https://howgodspeakstous.com/sitemap-index.xml
 
 # Block access to admin and private areas
 Disallow: /admin/
@@ -10,7 +10,9 @@ Disallow: /api/
 Disallow: /_astro/
 Disallow: /node_modules/
 
-# Allow all other content
+# Allow all public content
+Allow: /
 Allow: /blog/
+Allow: /daily-verses/
 Allow: /about/
 Allow: /contact/

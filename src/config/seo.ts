@@ -2,10 +2,10 @@
 
 export const seoConfig = {
   site: {
-    name: 'Your Company',
-    description: 'A modern website built with Astro and Contentful CMS. Fast, flexible, and content-driven.',
-    url: 'https://your-domain.com', // Replace with your actual domain
-    image: '/favicon.svg',
+    name: 'How God Speaks To Us',
+    description: 'A daily devotional and meditations on God\'s Word. Discover how God speaks through His Word, His Spirit, His people, wisdom, and circumstances.',
+    url: 'https://howgodspeakstous.com',
+    image: '/howgodspeakstous.png',
     twitter: '@djmartin2019',
     github: 'djmartin2019'
   },
@@ -18,7 +18,7 @@ export const seoConfig = {
   defaultOpenGraph: {
     type: 'website',
     locale: 'en_US',
-    siteName: 'Your Company',
+    siteName: 'How God Speaks To Us',
   },
   defaultTwitter: {
     card: 'summary_large_image',
