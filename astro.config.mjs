@@ -13,12 +13,7 @@ export default defineConfig({
     },
     build: {
       cssMinify: true,
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          drop_console: false, // Keep console for debugging
-        },
-      },
+      minify: 'esbuild', // esbuild is faster and built-in with Vite
     },
   },
   // Image optimization
