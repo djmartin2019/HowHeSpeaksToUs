@@ -98,10 +98,6 @@ const seoDescription = post.fields.excerpt || `Read ${post.fields.title}`;
 // Use 3:2 ratio for featured image (1200x800)
 const featuredImage = featuredImageResolved ? getAssetUrl(featuredImageResolved, 1200, 800) : undefined;
 
-// Calculate reading time and word count (placeholder - in real implementation, parse rich text)
-const wordCount = Math.max(300, Math.floor((post.fields.excerpt?.length || 0) * 2.5));
-const readingTime = Math.max(1, Math.ceil(wordCount / 200)); // 200 words per minute
-
 // Get category from tags (use first tag as category)
 const category = post.fields.tags?.[0] || 'General';
 
@@ -135,6 +131,60 @@ try {
     <p class="text-red-800">Error rendering content. Please check the console for details.</p>
     <pre class="mt-2 text-xs text-red-600 overflow-auto">${String(error)}</pre>
   </div>`;
+}
+
+// Calculate accurate word count and reading time from the actual content
+function extractTextFromRichText(document: any): string {
+  if (!document) return '';
+  
+  let text = '';
+  
+  // Handle rich text document structure
+  if (document.nodeType === 'document' && document.content) {
+    const extractFromNodes = (nodes: any[]): string => {
+      return nodes.map((node: any) => {
+        if (node.nodeType === 'text') {
+          return node.value || '';
+        } else if (node.content && Array.isArray(node.content)) {
+          return extractFromNodes(node.content);
+        }
+        return '';
+      }).join(' ');
+    };
+    text = extractFromNodes(document.content);
+  } else if (typeof document === 'string') {
+    // If it's already a string, use it directly
+    text = document;
+  } else if (contentHtml) {
+    // Fallback: extract text from rendered HTML
+    text = contentHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  
+  return text;
+}
+
+// Calculate word count from actual content
+let wordCount = 0;
+let readingTime = 1;
+
+try {
+  const contentText = extractTextFromRichText(post?.fields?.content);
+  if (contentText) {
+    // Count words (split by whitespace and filter out empty strings)
+    const words = contentText.trim().split(/\s+/).filter(word => word.length > 0);
+    wordCount = words.length;
+    
+    // Calculate reading time (average reading speed: 200-250 words per minute, using 200 for conservative estimate)
+    readingTime = Math.max(1, Math.ceil(wordCount / 200));
+  } else {
+    // Fallback if content is empty
+    wordCount = 0;
+    readingTime = 1;
+  }
+} catch (error) {
+  console.error('Error calculating word count:', error);
+  wordCount = 0;
+  readingTime = 1;
 }
 
 // Generate breadcrumb structured data

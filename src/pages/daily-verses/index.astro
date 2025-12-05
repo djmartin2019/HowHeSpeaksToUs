@@ -3,33 +3,40 @@ import Base from '../../layouts/Base.astro';
 import { getDailyVerses, formatDate } from '../../lib/contentful';
 import { renderRichText } from '../../lib/rich-text-renderer';
 
-const url = new URL(Astro.request.url);
-const page = parseInt(url.searchParams.get('page') || '1');
-const limit = 12;
-const skip = (page - 1) * limit;
+// Disable prerendering to allow query parameters to work dynamically
+export const prerender = false;
 
-let versesResponse: any = { items: [], total: 0, includes: {} };
+// Client-side pagination - no need to read page here
+const limit = 12;
+
+// Fetch all verses first, then filter and paginate
+// This ensures accurate pagination even if some entries are filtered out
+let allVersesResponse = { items: [], total: 0, includes: {} };
 try {
-  versesResponse = await getDailyVerses({ limit, skip });
+  allVersesResponse = await getDailyVerses({ limit: 1000 });
 } catch (e) {
   console.error('Error fetching daily verses:', e);
 }
 
-const items: any[] = Array.isArray(versesResponse.items) ? versesResponse.items : [];
-const includes: any = versesResponse?.includes ?? {};
+const allItems = Array.isArray(allVersesResponse.items) ? allVersesResponse.items : [];
 
-// Filter and validate verses
-const verses = items
-  .filter((it) => it?.sys?.type === 'Entry' && it?.fields && it.fields.date && it.fields.verse)
-  .map((it) => ({
-    ...it,
-    dateString: it.fields.date ? new Date(it.fields.date).toISOString().split('T')[0] : null
-  }));
+// Filter and validate verses first
+const allValidVerses = allItems
+  .filter((it) => {
+    if (!it || it.sys?.type !== 'Entry' || !it.fields) return false;
+    return !!(it.fields.date && it.fields.verse);
+  })
+  .map((it) => {
+    const dateString = it.fields.date ? new Date(it.fields.date).toISOString().split('T')[0] : null;
+    return {
+      ...it,
+      dateString
+    };
+  });
 
-const totalVerses: number = Number(versesResponse?.total ?? verses.length);
+// For client-side pagination, we'll render ALL verses and paginate in JavaScript
+const totalVerses = allValidVerses.length;
 const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
-const hasNextPage = page < totalPages;
-const hasPrevPage = page > 1;
 ---
 
 <Base
@@ -52,18 +59,23 @@ const hasPrevPage = page > 1;
   <!-- Verses Grid -->
   <section class="py-16 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {verses.length > 0 ? (
+      {allValidVerses.length > 0 ? (
         <>
           <!-- Results count -->
           <div class="mb-8">
-            <p class="text-gray-700">
-              Showing all verses ({totalVerses} total)
+            <p class="text-gray-700" id="results-count">
+              Showing page 1 of {totalPages} ({totalVerses} total verses)
             </p>
           </div>
 
           <!-- Verses Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {verses.map((verse) => {
+          <div 
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" 
+            id="verses-grid"
+            data-total-verses={totalVerses}
+            data-total-pages={totalPages}
+          >
+            {allValidVerses.map((verse, index) => {
               // Render verse preview (first paragraph or truncated)
               let versePreview = '';
               try {
@@ -71,16 +83,22 @@ const hasPrevPage = page > 1;
                   const rendered = renderRichText(verse.fields.verse);
                   // Extract text from HTML for preview
                   const textMatch = rendered.match(/<p[^>]*>(.*?)<\/p>/);
-                  versePreview = textMatch ? textMatch[1].replace(/<[^>]*>/g, '').substring(0, 150) : '';
+                  versePreview = textMatch && textMatch[1] ? textMatch[1].replace(/<[^>]*>/g, '').substring(0, 150) : '';
                   if (versePreview.length >= 150) versePreview += '...';
                 }
               } catch (e) {
                 console.error('Error rendering verse preview:', e);
               }
 
+              // Determine which page this verse belongs to
+              const versePage = Math.floor(index / limit) + 1;
+              const isVisible = versePage === 1; // Show first page by default
+              
               return (
                 <article 
-                  class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all duration-300"
+                  class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all duration-300 verse-item"
+                  data-page={versePage}
+                  style={isVisible ? '' : 'display: none;'}
                 >
                   <div class="p-6">
                     <div class="flex items-center text-sm text-gray-600 mb-3">
@@ -117,37 +135,37 @@ const hasPrevPage = page > 1;
           <!-- Pagination -->
           {totalPages > 1 && (
             <div class="mt-16 flex justify-center">
-              <nav class="flex items-center space-x-2">
-                {hasPrevPage && (
-                  <a
-                    href={`/daily-verses?page=${page - 1}`}
-                    class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
-                  >
-                    Previous
-                  </a>
-                )}
+              <nav class="flex items-center space-x-2" id="pagination-nav">
+                <button
+                  type="button"
+                  id="prev-btn"
+                  class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
+                  style="display: none;"
+                >
+                  Previous
+                </button>
 
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                  <a
-                    href={`/daily-verses?page=${pageNum}`}
-                    class={`px-3 py-2 text-sm font-medium transition-colors ${
-                      pageNum === page
+                  <button
+                    type="button"
+                    class={`px-3 py-2 text-sm font-medium transition-colors pagination-btn ${
+                      pageNum === 1
                         ? 'bg-black text-white border-2 border-black'
                         : 'text-black bg-white border-2 border-gray-300 hover:border-black'
                     }`}
+                    data-page={pageNum}
                   >
                     {pageNum}
-                  </a>
+                  </button>
                 ))}
 
-                {hasNextPage && (
-                  <a
-                    href={`/daily-verses?page=${page + 1}`}
-                    class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
-                  >
-                    Next
-                  </a>
-                )}
+                <button
+                  type="button"
+                  id="next-btn"
+                  class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
+                >
+                  Next
+                </button>
               </nav>
             </div>
           )}
@@ -168,4 +186,133 @@ const hasPrevPage = page > 1;
     </div>
   </section>
 </Base>
+
+<script is:inline>
+  (function() {
+    const limit = 12;
+    const grid = document.getElementById('verses-grid');
+    const totalVersesCount = grid ? parseInt(grid.getAttribute('data-total-verses') || '0', 10) : 0;
+    const totalPagesCount = grid ? parseInt(grid.getAttribute('data-total-pages') || '1', 10) : 1;
+    
+    // Get current page from URL or default to 1
+    function getCurrentPage() {
+      const params = new URLSearchParams(window.location.search);
+      const page = parseInt(params.get('page') || '1', 10);
+      return Math.max(1, Math.min(page, totalPagesCount));
+    }
+    
+    // Update URL without reload
+    function updateURL(page) {
+      const url = new URL(window.location.href);
+      if (page === 1) {
+        url.searchParams.delete('page');
+      } else {
+        url.searchParams.set('page', page.toString());
+      }
+      window.history.pushState({ page }, '', url.toString());
+    }
+    
+    // Show the specified page
+    function showPage(page) {
+      const verseItems = document.querySelectorAll('.verse-item');
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      
+      verseItems.forEach((item, index) => {
+        if (index >= startIndex && index < endIndex) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+      
+      // Update results count
+      const resultsCount = document.getElementById('results-count');
+      if (resultsCount) {
+        resultsCount.textContent = `Showing page ${page} of ${totalPagesCount} (${totalVersesCount} total verses)`;
+      }
+      
+      // Update pagination buttons
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const pageBtns = document.querySelectorAll('.pagination-btn');
+      
+      if (prevBtn) {
+        prevBtn.style.display = page > 1 ? '' : 'none';
+      }
+      if (nextBtn) {
+        nextBtn.style.display = page < totalPagesCount ? '' : 'none';
+      }
+      
+      pageBtns.forEach((btn) => {
+        const btnPage = parseInt(btn.getAttribute('data-page') || '1', 10);
+        if (btnPage === page) {
+          btn.className = 'px-3 py-2 text-sm font-medium transition-colors pagination-btn bg-black text-white border-2 border-black';
+        } else {
+          btn.className = 'px-3 py-2 text-sm font-medium transition-colors pagination-btn text-black bg-white border-2 border-gray-300 hover:border-black';
+        }
+      });
+    }
+    
+    // Initialize pagination
+    function initPagination() {
+      const currentPage = getCurrentPage();
+      showPage(currentPage);
+      
+      // Set up event listeners
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const pageBtns = document.querySelectorAll('.pagination-btn');
+      
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          const page = getCurrentPage();
+          if (page > 1) {
+            const newPage = page - 1;
+            updateURL(newPage);
+            showPage(newPage);
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        });
+      }
+      
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          const page = getCurrentPage();
+          if (page < totalPagesCount) {
+            const newPage = page + 1;
+            updateURL(newPage);
+            showPage(newPage);
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+        });
+      }
+      
+      pageBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const page = parseInt(btn.getAttribute('data-page') || '1', 10);
+          updateURL(page);
+          showPage(page);
+          // Scroll to top
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      });
+      
+      // Handle browser back/forward buttons
+      window.addEventListener('popstate', () => {
+        const page = getCurrentPage();
+        showPage(page);
+      });
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPagination);
+    } else {
+      initPagination();
+    }
+  })();
+</script>
 
