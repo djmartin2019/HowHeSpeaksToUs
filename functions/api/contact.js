@@ -2,11 +2,24 @@
 export async function onRequestPost(context) {
   try {
     const { request, env } = context;
-    const formData = await request.formData();
-
-    const name = formData.get("name");
-    const email = formData.get("email");
-    const message = formData.get("message");
+    
+    // Handle both JSON and FormData requests
+    let name, email, message;
+    const contentType = request.headers.get("content-type") || "";
+    
+    if (contentType.includes("application/json")) {
+      // Parse JSON request
+      const json = await request.json();
+      name = json.name;
+      email = json.email;
+      message = json.message;
+    } else {
+      // Parse FormData request
+      const formData = await request.formData();
+      name = formData.get("name");
+      email = formData.get("email");
+      message = formData.get("message");
+    }
 
     // Basic validation
     if (!name || !email || !message) {
@@ -62,22 +75,22 @@ export async function onRequestPost(context) {
           from: fromEmail,
           to: [targetEmail],
           reply_to: email,
-          subject: `Contact Form Submission from ${name}`,
+          subject: `Contact Form Submission from ${String(name)}`,
           html: `
             <h2>New Contact Form Submission</h2>
-            <p><strong>Name:</strong> ${name}</p>
-            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Name:</strong> ${String(name)}</p>
+            <p><strong>Email:</strong> ${String(email)}</p>
             <p><strong>Message:</strong></p>
-            <p>${message.replace(/\n/g, "<br>")}</p>
+            <p>${String(message).replace(/\n/g, "<br>")}</p>
           `,
           text: `
 New Contact Form Submission
 
-Name: ${name}
-Email: ${email}
+Name: ${String(name)}
+Email: ${String(email)}
 
 Message:
-${message}
+${String(message)}
           `,
         }),
       });
