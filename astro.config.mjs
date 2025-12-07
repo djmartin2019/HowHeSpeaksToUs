@@ -3,7 +3,7 @@ import tailwind from "@astrojs/tailwind";
 
 // https://astro.build/config
 export default defineConfig({
-  output: 'hybrid', // Enable API routes for contact form
+  // Use static output - API routes handled by Cloudflare Pages Functions
   integrations: [tailwind()],
   // Performance optimizations
   compressHTML: true,
