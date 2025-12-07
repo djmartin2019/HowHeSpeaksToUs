@@ -124,9 +124,19 @@ import Base from '../layouts/Base.astro';
         const email = formData.get('email');
         const message = formData.get('message');
         
+        // Convert FormData to JSON for more reliable parsing
+        const data = {
+          name: name,
+          email: email,
+          message: message
+        };
+        
         const response = await fetch('/api/contact', {
           method: 'POST',
-          body: formData
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data)
         });
 
         // Check if response is OK and is JSON

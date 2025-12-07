@@ -24,19 +24,77 @@ export async function onRequestPost(context) {
 
     // Target email address for contact form submissions
     const targetEmail = "howhespeakstous@gmail.com";
+    const fromEmail = "noreply@howgodspeakstous.com"; // Verified domain in Resend
 
-    // In a real implementation, you would:
-    // 1. Send an email using a service like SendGrid, Resend, or EmailJS to: howhespeakstous@gmail.com
-    // 2. Store the message in a database
-    // 3. Send a notification to the site owner
+    // Get Resend API key from environment variables
+    const resendApiKey = env.RESEND_API_KEY;
 
-    // For now, we'll just log the message and return success
-    console.log("Contact form submission:", {
-      name,
-      email,
-      message,
-      targetEmail,
-    });
+    // If Resend API key is not configured, log and return success (for development)
+    if (!resendApiKey) {
+      console.log("Contact form submission (email not sent - RESEND_API_KEY not configured):", {
+        name,
+        email,
+        message,
+        targetEmail,
+      });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Thank you for your message! We'll get back to you soon.",
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Send email using Resend API
+    try {
+      const emailResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${resendApiKey}`,
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [targetEmail],
+          reply_to: email,
+          subject: `Contact Form Submission from ${name}`,
+          html: `
+            <h2>New Contact Form Submission</h2>
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Message:</strong></p>
+            <p>${message.replace(/\n/g, "<br>")}</p>
+          `,
+          text: `
+New Contact Form Submission
+
+Name: ${name}
+Email: ${email}
+
+Message:
+${message}
+          `,
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.text();
+        console.error("Resend API error:", errorData);
+        throw new Error("Failed to send email");
+      }
+
+      const emailResult = await emailResponse.json();
+      console.log("Email sent successfully:", emailResult.id);
+    } catch (emailError) {
+      console.error("Error sending email:", emailError);
+      // Still return success to user, but log the error
+      // You might want to set up error monitoring here
+    }
 
     return new Response(
       JSON.stringify({
