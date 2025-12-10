@@ -20,12 +20,28 @@ try {
   // Continue without posts if there's an error
 }
 
-// Fetch today's verse from Contentful
+// Fetch today's verse, or most recent verse if today's doesn't exist
 let todayVerse = null;
 let verseHtml = '';
 let verseDateString = null;
+const todayDate = new Date().toISOString().split('T')[0];
+
 try {
+  // First, try to get today's verse
   todayVerse = await getTodayVerse();
+  
+  // If no verse for today, get the most recent verse
+  if (!todayVerse || !todayVerse.fields || !todayVerse.fields.verse) {
+    const recentVersesResponse = await getRecentDailyVerses(1);
+    if (recentVersesResponse?.items && recentVersesResponse.items.length > 0) {
+      const mostRecentVerse = recentVersesResponse.items[0];
+      if (mostRecentVerse?.fields?.verse) {
+        todayVerse = mostRecentVerse;
+      }
+    }
+  }
+  
+  // Render the verse HTML
   if (todayVerse?.fields?.verse) {
     verseHtml = renderRichText(todayVerse.fields.verse);
     // Replace all gray text classes with white
@@ -33,6 +49,7 @@ try {
     // Also replace any inline styles that might set gray colors
     verseHtml = verseHtml.replace(/color:\s*[^;]*gray[^;]*;/gi, 'color: #FFFFFF !important;');
   }
+  
   // Get date string for the link
   if (todayVerse?.fields?.date) {
     const date = new Date(todayVerse.fields.date);
@@ -42,17 +59,22 @@ try {
   console.error('Error fetching today\'s verse:', error);
 }
 
-// Fetch previous verses from Contentful
+// Fetch previous verses from Contentful (excluding the verse we're showing)
 let previousVerses = [];
 try {
-  const versesResponse = await getRecentDailyVerses(4); // Get 4 to account for filtering out today
+  const versesResponse = await getRecentDailyVerses(10); // Get more to filter properly
+  const displayedVerseDate = todayVerse?.fields?.date 
+    ? new Date(todayVerse.fields.date).toISOString().split('T')[0] 
+    : null;
+  
   previousVerses = (versesResponse.items || [])
     .filter((verse) => {
       if (verse?.sys?.type !== 'Entry' || !verse?.fields) return false;
-      // Exclude today's verse from previous verses
+      // Exclude the verse we're displaying in the hero
       const verseDate = new Date(verse.fields.date).toISOString().split('T')[0];
-      const todayDate = new Date().toISOString().split('T')[0];
-      return verseDate !== todayDate;
+      if (displayedVerseDate && verseDate === displayedVerseDate) return false;
+      // Only show verses from the past
+      return verseDate < todayDate;
     })
     .slice(0, 3) // Get up to 3 previous verses
     .map((verse) => {
