@@ -45,11 +45,11 @@ export async function onRequestPost(context) {
     // If Resend API key is not configured, log and return success (for development)
     if (!resendApiKey) {
       console.log("Contact form submission (email not sent - RESEND_API_KEY not configured):", {
-        name,
-        email,
-        message,
-        targetEmail,
-      });
+      name,
+      email,
+      message,
+      targetEmail,
+    });
 
       return new Response(
         JSON.stringify({

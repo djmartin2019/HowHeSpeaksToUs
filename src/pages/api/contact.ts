@@ -120,11 +120,11 @@ ${message}
     } else {
       // Log for development when API key is not set
       console.log("Contact form submission (email not sent - RESEND_API_KEY not configured):", {
-        name,
-        email,
-        message,
-        targetEmail,
-      });
+      name,
+      email,
+      message,
+      targetEmail,
+    });
     }
 
     return new Response(
