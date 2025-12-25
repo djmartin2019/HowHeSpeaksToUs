@@ -144,8 +144,20 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
                   const rendered = renderRichText(verse.fields.verse);
                   // Extract text from HTML for preview
                   const textMatch = rendered.match(/<p[^>]*>(.*?)<\/p>/);
-                  versePreview = textMatch && textMatch[1] ? textMatch[1].replace(/<[^>]*>/g, '').substring(0, 150) : '';
-                  if (versePreview.length >= 150) versePreview += '...';
+                  if (textMatch && textMatch[1]) {
+                    // Remove HTML tags and decode HTML entities
+                    let text = textMatch[1].replace(/<[^>]*>/g, '');
+                    // Decode HTML entities
+                    text = text
+                      .replace(/&quot;/g, '"')
+                      .replace(/&amp;/g, '&')
+                      .replace(/&lt;/g, '<')
+                      .replace(/&gt;/g, '>')
+                      .replace(/&#039;/g, "'")
+                      .replace(/&apos;/g, "'");
+                    versePreview = text.substring(0, 150);
+                    if (text.length >= 150) versePreview += '...';
+                  }
                 }
               } catch (e) {
                 console.error('Error rendering verse preview:', e);

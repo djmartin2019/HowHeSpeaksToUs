@@ -84,12 +84,23 @@ try {
           previewHtml = renderRichText(verse.fields.verse);
           // Extract text from HTML for preview
           const textMatch = previewHtml.match(/<p[^>]*>(.*?)<\/p>/);
-          const text = textMatch ? textMatch[1].replace(/<[^>]*>/g, '') : '';
-          return {
-            ...verse,
-            previewText: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
-            dateString: new Date(verse.fields.date).toISOString().split('T')[0]
-          };
+          if (textMatch && textMatch[1]) {
+            // Remove HTML tags and decode HTML entities
+            let text = textMatch[1].replace(/<[^>]*>/g, '');
+            // Decode HTML entities
+            text = text
+              .replace(/&quot;/g, '"')
+              .replace(/&amp;/g, '&')
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&#039;/g, "'")
+              .replace(/&apos;/g, "'");
+            return {
+              ...verse,
+              previewText: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
+              dateString: new Date(verse.fields.date).toISOString().split('T')[0]
+            };
+          }
         }
       } catch (e) {
         console.error('Error rendering verse preview:', e);
