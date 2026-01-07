@@ -23,6 +23,11 @@ export async function getStaticPaths() {
       });
     }
     
+    // Get today's date for filtering out future verses
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayString = today.toISOString().split('T')[0];
+    
     // Filter verses to ensure they have the required structure
     const validVerses = (versesResponse.items || [])
       .filter((verse: any) => {
@@ -52,6 +57,11 @@ export async function getStaticPaths() {
           ...verse,
           dateString
         };
+      })
+      // Filter out future verses - only generate pages for verses up to today
+      .filter((verse: any) => {
+        if (!verse.dateString) return false;
+        return verse.dateString <= todayString;
       });
     
     console.log('📝 Generated daily verse dates:', validVerses.map((v: any) => v.dateString));
@@ -78,19 +88,44 @@ export interface Props {
 const { verse: verseFromProps } = Astro.props;
 const dateParam = Astro.params.date;
 
+// Get today's date for comparison
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+const todayString = today.toISOString().split('T')[0];
+
 // Fetch the verse directly using the date parameter - same approach as other pages
 // This ensures we get the fresh data with proper locale handling
 let verse = verseFromProps;
 try {
   if (dateParam) {
+    // Check if the requested date is in the future
+    if (dateParam > todayString) {
+      // Return 404 for future verses
+      return Astro.redirect('/404');
+    }
+    
     const fetchedVerse = await getDailyVerseByDate(dateParam);
     if (fetchedVerse) {
       verse = fetchedVerse;
+      
+      // Double-check the verse date is not in the future
+      const verseDate = verse.fields?.date ? new Date(verse.fields.date).toISOString().split('T')[0] : null;
+      if (verseDate && verseDate > todayString) {
+        return Astro.redirect('/404');
+      }
     }
   }
 } catch (error) {
   console.error('Error fetching verse by date:', error);
   // Fall back to props verse
+}
+
+// Final check: if verse date is in the future, redirect to 404
+if (verse?.fields?.date) {
+  const verseDate = new Date(verse.fields.date).toISOString().split('T')[0];
+  if (verseDate > todayString) {
+    return Astro.redirect('/404');
+  }
 }
 
 // Generate SEO metadata

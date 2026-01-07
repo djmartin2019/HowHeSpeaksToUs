@@ -25,6 +25,11 @@ try {
 
 const allItems = Array.isArray(allVersesResponse.items) ? allVersesResponse.items : [];
 
+// Get today's date in YYYY-MM-DD format for comparison
+const today = new Date();
+today.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+const todayString = today.toISOString().split('T')[0];
+
 // Filter and validate verses first
 const allValidVerses = allItems
   .filter((it) => {
@@ -37,6 +42,11 @@ const allValidVerses = allItems
       ...it,
       dateString
     };
+  })
+  // Filter out future verses - only show verses up to today
+  .filter((it) => {
+    if (!it.dateString) return false;
+    return it.dateString <= todayString;
   });
 
 // Extract all unique tags from verses
@@ -142,25 +152,49 @@ const totalPages = Math.max(1, Math.ceil(totalVerses / limit));
               try {
                 if (verse?.fields?.verse) {
                   const rendered = renderRichText(verse.fields.verse);
-                  // Extract text from HTML for preview
-                  const textMatch = rendered.match(/<p[^>]*>(.*?)<\/p>/);
-                  if (textMatch && textMatch[1]) {
-                    // Remove HTML tags and decode HTML entities
-                    let text = textMatch[1].replace(/<[^>]*>/g, '');
-                    // Decode HTML entities
+                  
+                  // More robust extraction: try multiple approaches
+                  let text = '';
+                  
+                  // First, try to match paragraph with nested tags (using a more robust regex)
+                  // This regex handles nested tags by matching the first <p> to its closing </p>
+                  const paragraphMatch = rendered.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+                  if (paragraphMatch && paragraphMatch[1]) {
+                    text = paragraphMatch[1];
+                  } else {
+                    // Fallback: strip all HTML tags and get first meaningful text
+                    text = rendered.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                  }
+                  
+                  if (text) {
+                    // Remove any remaining HTML tags and decode HTML entities
+                    text = text.replace(/<[^>]*>/g, '');
+                    // Decode HTML entities (more comprehensive list)
                     text = text
                       .replace(/&quot;/g, '"')
                       .replace(/&amp;/g, '&')
                       .replace(/&lt;/g, '<')
                       .replace(/&gt;/g, '>')
                       .replace(/&#039;/g, "'")
-                      .replace(/&apos;/g, "'");
-                    versePreview = text.substring(0, 150);
-                    if (text.length >= 150) versePreview += '...';
+                      .replace(/&apos;/g, "'")
+                      .replace(/&nbsp;/g, ' ')
+                      .replace(/&#8217;/g, "'")
+                      .replace(/&#8220;/g, '"')
+                      .replace(/&#8221;/g, '"')
+                      .replace(/&#8211;/g, '–')
+                      .replace(/&#8212;/g, '—');
+                    
+                    // Clean up extra whitespace
+                    text = text.replace(/\s+/g, ' ').trim();
+                    
+                    if (text) {
+                      versePreview = text.substring(0, 150);
+                      if (text.length >= 150) versePreview += '...';
+                    }
                   }
                 }
               } catch (e) {
-                console.error('Error rendering verse preview:', e);
+                console.error('Error rendering verse preview:', e, verse?.fields?.passage);
               }
 
               // Determine which page this verse belongs to

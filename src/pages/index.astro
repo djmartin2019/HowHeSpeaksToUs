@@ -30,11 +30,24 @@ try {
   // First, try to get today's verse
   todayVerse = await getTodayVerse();
   
-  // If no verse for today, get the most recent verse
+  // Ensure today's verse is not in the future (shouldn't happen, but safety check)
+  if (todayVerse?.fields?.date) {
+    const verseDate = new Date(todayVerse.fields.date).toISOString().split('T')[0];
+    if (verseDate > todayDate) {
+      todayVerse = null; // Reset if it's in the future
+    }
+  }
+  
+  // If no verse for today, get the most recent verse (but not future)
   if (!todayVerse || !todayVerse.fields || !todayVerse.fields.verse) {
-    const recentVersesResponse = await getRecentDailyVerses(1);
+    const recentVersesResponse = await getRecentDailyVerses(10);
     if (recentVersesResponse?.items && recentVersesResponse.items.length > 0) {
-      const mostRecentVerse = recentVersesResponse.items[0];
+      // Find the most recent verse that's not in the future
+      const mostRecentVerse = recentVersesResponse.items.find((verse: any) => {
+        if (!verse?.fields?.verse) return false;
+        const verseDate = new Date(verse.fields.date).toISOString().split('T')[0];
+        return verseDate <= todayDate;
+      });
       if (mostRecentVerse?.fields?.verse) {
         todayVerse = mostRecentVerse;
       }
@@ -78,36 +91,55 @@ try {
     })
     .slice(0, 3) // Get up to 3 previous verses
     .map((verse) => {
-      let previewHtml = '';
+      let previewText = '';
       try {
         if (verse?.fields?.verse) {
-          previewHtml = renderRichText(verse.fields.verse);
-          // Extract text from HTML for preview
-          const textMatch = previewHtml.match(/<p[^>]*>(.*?)<\/p>/);
-          if (textMatch && textMatch[1]) {
-            // Remove HTML tags and decode HTML entities
-            let text = textMatch[1].replace(/<[^>]*>/g, '');
-            // Decode HTML entities
+          const rendered = renderRichText(verse.fields.verse);
+          
+          // More robust extraction: try multiple approaches
+          let text = '';
+          
+          // First, try to match paragraph with nested tags (using a more robust regex)
+          const paragraphMatch = rendered.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+          if (paragraphMatch && paragraphMatch[1]) {
+            text = paragraphMatch[1];
+          } else {
+            // Fallback: strip all HTML tags and get first meaningful text
+            text = rendered.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+          }
+          
+          if (text) {
+            // Remove any remaining HTML tags and decode HTML entities
+            text = text.replace(/<[^>]*>/g, '');
+            // Decode HTML entities (more comprehensive list)
             text = text
               .replace(/&quot;/g, '"')
               .replace(/&amp;/g, '&')
               .replace(/&lt;/g, '<')
               .replace(/&gt;/g, '>')
               .replace(/&#039;/g, "'")
-              .replace(/&apos;/g, "'");
-            return {
-              ...verse,
-              previewText: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
-              dateString: new Date(verse.fields.date).toISOString().split('T')[0]
-            };
+              .replace(/&apos;/g, "'")
+              .replace(/&nbsp;/g, ' ')
+              .replace(/&#8217;/g, "'")
+              .replace(/&#8220;/g, '"')
+              .replace(/&#8221;/g, '"')
+              .replace(/&#8211;/g, '–')
+              .replace(/&#8212;/g, '—');
+            
+            // Clean up extra whitespace
+            text = text.replace(/\s+/g, ' ').trim();
+            
+            if (text) {
+              previewText = text.substring(0, 200) + (text.length > 200 ? '...' : '');
+            }
           }
         }
       } catch (e) {
-        console.error('Error rendering verse preview:', e);
+        console.error('Error rendering verse preview:', e, verse?.fields?.passage);
       }
       return {
         ...verse,
-        previewText: '',
+        previewText,
         dateString: new Date(verse.fields.date).toISOString().split('T')[0]
       };
     });
