@@ -77,6 +77,22 @@ When you publish or update content in Contentful, a webhook will automatically t
 
 ## Troubleshooting
 
+### Webhook Getting 403 Error (Cloudflare Bot Protection)
+
+**This is the most common issue!** Cloudflare's bot protection blocks Contentful's webhook requests.
+
+**Solution:** Create a Cloudflare Firewall Rule to bypass bot protection for the webhook endpoint.
+
+See **CLOUDFLARE_FIREWALL_SETUP.md** for detailed instructions.
+
+Quick fix:
+
+1. Go to Cloudflare Dashboard → Security → WAF
+2. Create a custom rule:
+   - **Field**: `URI Path` equals `/api/contentful-webhook`
+   - **Action**: `Skip` → Select **Bot Fight Mode** and **Super Bot Fight Mode**
+3. Deploy the rule
+
 ### Webhook Not Triggering Builds
 
 1. **Check the URL**: Make sure the webhook URL in Contentful matches your Cloudflare Pages domain

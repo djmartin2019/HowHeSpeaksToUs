@@ -405,12 +405,12 @@ try {
                   {resource.fields.description}
                 </p>
               )}
-              <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 {resource.firstFileUrl && (
                   <a
                     href={resource.firstFileUrl}
                     download
-                    class="inline-flex items-center px-4 py-2 bg-black text-white hover:bg-gray-800 transition-colors text-sm font-semibold"
+                    class="inline-flex items-center px-4 py-2 bg-black text-white hover:bg-gray-800 transition-colors text-sm font-semibold self-start"
                   >
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -420,7 +420,7 @@ try {
                 )}
                 <a
                   href={`/resources/${resource?.fields?.slug}`}
-                  class="inline-flex items-center text-black hover:underline font-semibold transition-colors border-b-2 border-black pb-1 self-start"
+                  class="inline-flex items-center text-black hover:underline font-semibold transition-colors border-b-2 border-black pb-1 self-start sm:self-auto"
                 >
                   Click here to view →
                 </a>

@@ -1,15 +1,51 @@
 // Cloudflare Pages Function for handling Contentful webhooks
 // This function receives webhook events from Contentful and triggers a Cloudflare Pages rebuild
+//
+// IMPORTANT: You must create a Cloudflare Firewall Rule to bypass bot protection for this endpoint.
+// See CLOUDFLARE_FIREWALL_SETUP.md for instructions.
 
 export async function onRequestPost(context) {
   try {
     const { request, env } = context;
-    
+
+    // Verify this is a Contentful webhook by checking for Contentful-specific headers
+    const contentfulTopic = request.headers.get("X-Contentful-Topic");
+    const contentfulWebhookName = request.headers.get(
+      "X-Contentful-Webhook-Name"
+    );
+
+    // Log the request for debugging
+    console.log("Webhook request received:", {
+      hasContentfulTopic: !!contentfulTopic,
+      hasContentfulWebhookName: !!contentfulWebhookName,
+      userAgent: request.headers.get("User-Agent"),
+      contentType: request.headers.get("Content-Type"),
+    });
+
+    // Optional: Only allow requests with Contentful headers (for extra security)
+    // Uncomment the following lines if you want to reject non-Contentful requests:
+    /*
+    if (!contentfulTopic && !contentfulWebhookName) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Not a valid Contentful webhook",
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+    */
+
     // Get the Cloudflare Pages Deploy Hook URL from environment variables
     const deployHookUrl = env.CLOUDFLARE_DEPLOY_HOOK_URL;
-    
+
     if (!deployHookUrl) {
-      console.error("CLOUDFLARE_DEPLOY_HOOK_URL environment variable is not set");
+      console.error(
+        "CLOUDFLARE_DEPLOY_HOOK_URL environment variable is not set"
+      );
       return new Response(
         JSON.stringify({
           success: false,
@@ -61,7 +97,9 @@ export async function onRequestPost(context) {
     if (webhookData) {
       const eventType = webhookData.sys?.type || "unknown";
       const contentType = webhookData.sys?.contentType?.sys?.id || "unknown";
-      console.log(`Contentful webhook received: ${eventType} for ${contentType}`);
+      console.log(
+        `Contentful webhook received: ${eventType} for ${contentType}`
+      );
     }
 
     // Trigger Cloudflare Pages rebuild by calling the Deploy Hook
@@ -88,7 +126,7 @@ export async function onRequestPost(context) {
     }
 
     // Deploy Hooks return a simple success response
-    const deployResult = await deployResponse.json().catch(() => ({ success: true }));
+    await deployResponse.json().catch(() => ({ success: true }));
     console.log("Cloudflare Pages rebuild triggered successfully");
 
     return new Response(
@@ -117,4 +155,3 @@ export async function onRequestPost(context) {
     );
   }
 }
-
