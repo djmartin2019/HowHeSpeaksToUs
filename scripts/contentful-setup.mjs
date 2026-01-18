@@ -61,6 +61,19 @@ const pageDef = {
   ]
 };
 
+const resourceDef = {
+  name: 'Resource',
+  displayField: 'title',
+  fields: [
+    { id: 'title', name: 'Title', type: 'Symbol', required: true },
+    { id: 'slug', name: 'Slug', type: 'Symbol', required: true, validations: [{ unique: true }] },
+    { id: 'description', name: 'Description', type: 'Text', required: false },
+    { id: 'files', name: 'Files', type: 'Array', items: { type: 'Link', linkType: 'Asset' }, required: false },
+    { id: 'publishDate', name: 'Publish Date', type: 'Date', required: false },
+    { id: 'tags', name: 'Tags', type: 'Array', items: { type: 'Symbol' }, required: false }
+  ]
+};
+
 (async () => {
   const space = await client.getSpace(CONTENTFUL_SPACE_ID);
   const env = await space.getEnvironment(CONTENTFUL_ENVIRONMENT);
@@ -68,6 +81,7 @@ const pageDef = {
   console.log('Upserting content types…');
   await upsertContentType(env, 'blogPost', blogPostDef);
   await upsertContentType(env, 'page', pageDef);
+  await upsertContentType(env, 'resource', resourceDef);
   console.log('✅ Content types ready & published.');
 })();
 

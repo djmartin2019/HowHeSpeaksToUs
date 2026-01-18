@@ -37,6 +37,18 @@ export interface DailyVerse {
   };
 }
 
+export interface Resource {
+  sys: { id: string };
+  fields: {
+    title: string;
+    slug: string;
+    description?: string;
+    files?: any[]; // Array of Asset links (PowerPoint, PDF, etc.)
+    publishDate?: string; // Date & time
+    tags?: string[]; // Short text, list - tags for filtering
+  };
+}
+
 // Collection types
 export interface ContentfulCollection<T> {
   items: T[];
@@ -48,3 +60,4 @@ export interface ContentfulCollection<T> {
 export type BlogPostCollection = ContentfulCollection<BlogPost>;
 export type PageCollection = ContentfulCollection<Page>;
 export type DailyVerseCollection = ContentfulCollection<DailyVerse>;
+export type ResourceCollection = ContentfulCollection<Resource>;

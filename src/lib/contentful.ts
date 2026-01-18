@@ -303,6 +303,41 @@ export async function getRecentDailyVerses(limit = 5) {
   });
 }
 
+// getResources
+export async function getResources(params: QueryParams = {}) {
+  const query: any = {
+    content_type: "resource",
+    order: params.order || ["-fields.publishDate"],
+    limit: params.limit || 100,
+    skip: params.skip || 0,
+    include: 10, // Include assets
+  };
+  if (params["fields.tags[in]"])
+    query["fields.tags[in]"] = params["fields.tags[in]"];
+  return cfQuery(query);
+}
+
+// getResourceBySlug
+export async function getResourceBySlug(slug: string) {
+  const response = await cfQuery({
+    content_type: "resource",
+    "fields.slug": slug,
+    limit: 1,
+    include: 10, // Include assets
+  });
+  return response.items?.[0] ?? null;
+}
+
+// getRecentResources
+export async function getRecentResources(limit = 5) {
+  return cfQuery({
+    content_type: "resource",
+    order: ["-fields.publishDate"],
+    limit,
+    include: 10,
+  });
+}
+
 // Utility functions
 export function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {

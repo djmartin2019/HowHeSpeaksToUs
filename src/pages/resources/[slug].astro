@@ -1,0 +1,288 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getResources, getResourceBySlug, formatDate, getAssetUrl, resolveAsset } from '../../lib/contentful';
+import { generateBreadcrumbStructuredData } from '../../lib/seo';
+import type { Resource } from '../../types/contentful';
+
+export async function getStaticPaths() {
+  try {
+    const resourcesResponse = await getResources({ limit: 1000 });
+    
+    const validResources = (resourcesResponse.items || [])
+      .filter((resource: any) => {
+        if (resource?.sys?.type !== 'Entry' || !resource?.fields) return false;
+        const title = resource.fields.title || 
+          (typeof resource.fields.title === 'object' ? resource.fields.title['en-US'] || resource.fields.title['en'] : null);
+        const slug = resource.fields.slug || 
+          (typeof resource.fields.slug === 'object' ? resource.fields.slug['en-US'] || resource.fields.slug['en'] : null);
+        return !!(title && slug);
+      })
+      .map((resource: any) => ({
+        ...resource,
+        slug: resource.fields.slug || resource.fields.slug?.['en-US'] || resource.fields.slug?.['en']
+      }));
+    
+    return validResources.map((resource: Resource & { slug: string }) => ({
+      params: { slug: resource.slug },
+      props: { 
+        resource,
+        includes: resourcesResponse.includes || {}
+      },
+    }));
+  } catch (error) {
+    console.error('Error generating static paths for resources:', error);
+    return [];
+  }
+}
+
+export interface Props {
+  resource: Resource;
+  includes: any;
+}
+
+const { resource: resourceFromProps, includes } = Astro.props;
+const slugParam = Astro.params.slug;
+
+// Fetch the resource directly using the slug parameter
+let resource = resourceFromProps;
+try {
+  if (slugParam) {
+    const fetchedResource = await getResourceBySlug(slugParam);
+    if (fetchedResource) {
+      resource = fetchedResource;
+    }
+  }
+} catch (error) {
+  console.error('Error fetching resource by slug:', error);
+}
+
+// Resolve file assets
+const resolvedFiles = (resource?.fields?.files || [])
+  .map((fileLink: any) => resolveAsset(fileLink, includes))
+  .filter((file: any) => file !== null);
+
+// Generate SEO metadata
+const seoTitle = resource?.fields?.title || 'Resource';
+const seoDescription = resource?.fields?.description || `View ${resource?.fields?.title || 'resource'}`;
+
+// Generate breadcrumb structured data
+const breadcrumbItems = [
+  { name: 'Home', url: `${Astro.url.origin}/` },
+  { name: 'Resources', url: `${Astro.url.origin}/resources` },
+  { name: seoTitle, url: Astro.url.href }
+];
+const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbItems);
+
+// Helper function to get file type from content type
+function getFileType(contentType: string): 'pdf' | 'powerpoint' | 'other' {
+  if (contentType?.includes('pdf')) return 'pdf';
+  if (contentType?.includes('powerpoint') || contentType?.includes('presentation') || contentType?.includes('vnd.ms-powerpoint') || contentType?.includes('vnd.openxmlformats-officedocument.presentationml')) {
+    return 'powerpoint';
+  }
+  return 'other';
+}
+
+// Helper function to get file URL
+function getFileUrl(file: any): string {
+  if (!file?.fields?.file?.url) return '';
+  return `https:${file.fields.file.url}`;
+}
+---
+
+<Base 
+  title={`${seoTitle} - Resources - How God Speaks To Us`}
+  description={seoDescription}
+  hideNav={true}
+>
+  <!-- Breadcrumb Structured Data -->
+  <script type="application/ld+json" set:html={JSON.stringify(breadcrumbStructuredData)} />
+
+  <article class="bg-white">
+    <!-- Custom Navbar for Resources -->
+    <nav class="bg-black text-white" role="navigation" aria-label="Resource navigation">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16 md:h-20">
+          <!-- Breadcrumb on the left -->
+          <div class="flex items-center">
+            <ol class="flex items-center space-x-2 text-sm">
+              <li>
+                <a href="/" class="hover:text-gray-300 transition-colors">Home</a>
+              </li>
+              <li>
+                <span class="mx-2">></span>
+              </li>
+              <li>
+                <a href="/resources" class="hover:text-gray-300 transition-colors">Resources</a>
+              </li>
+              <li>
+                <span class="mx-2">></span>
+              </li>
+              <li>
+                <span class="font-medium" aria-current="page">
+                  {resource?.fields?.title || 'Resource'}
+                </span>
+              </li>
+            </ol>
+          </div>
+          
+          <!-- Back button -->
+          <a
+            href="/resources"
+            class="text-white hover:text-gray-300 transition-colors text-sm md:text-base"
+          >
+            ← Back to Resources
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Resource Content -->
+    <section class="py-16 bg-white">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Resource Title -->
+        {resource?.fields?.title && (
+          <div class="mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-black mb-4">
+              {resource.fields.title}
+            </h1>
+            {resource?.fields?.publishDate && (
+              <p class="text-gray-600 text-sm">
+                {formatDate(resource.fields.publishDate)}
+              </p>
+            )}
+          </div>
+        )}
+
+        <!-- Resource Description -->
+        {resource?.fields?.description && (
+          <div class="mb-8 prose prose-lg max-w-none">
+            <p class="text-gray-800 leading-relaxed">
+              {resource.fields.description}
+            </p>
+          </div>
+        )}
+
+        <!-- Files Viewer -->
+        {resolvedFiles.length > 0 ? (
+          <div class="space-y-8">
+            {resolvedFiles.map((file: any, index: number) => {
+              const fileUrl = getFileUrl(file);
+              const fileName = file?.fields?.title || file?.fields?.file?.fileName || `File ${index + 1}`;
+              const contentType = file?.fields?.file?.contentType || '';
+              const fileType = getFileType(contentType);
+              
+              return (
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                  <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-black">
+                      {fileName}
+                    </h2>
+                    <p class="text-sm text-gray-600 mt-1">
+                      {contentType || 'File'}
+                    </p>
+                  </div>
+                  
+                  <div class="bg-white p-4">
+                    {fileType === 'pdf' ? (
+                      <!-- PDF Viewer -->
+                      <div class="w-full" style="min-height: 600px;">
+                        <iframe
+                          src={fileUrl}
+                          class="w-full border border-gray-300 rounded"
+                          style="height: 800px;"
+                          title={`PDF Viewer: ${fileName}`}
+                        ></iframe>
+                        <div class="mt-4 flex gap-3">
+                          <a
+                            href={fileUrl}
+                            download
+                            class="inline-flex items-center px-4 py-2 bg-black text-white hover:bg-gray-800 transition-colors rounded"
+                          >
+                            Download PDF
+                          </a>
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center px-4 py-2 border-2 border-black text-black hover:bg-black hover:text-white transition-colors rounded"
+                          >
+                            Open in New Tab
+                          </a>
+                        </div>
+                      </div>
+                    ) : fileType === 'powerpoint' ? (
+                      <!-- PowerPoint Viewer using Office Online Viewer -->
+                      <div class="w-full" style="min-height: 600px;">
+                        <iframe
+                          src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
+                          class="w-full border border-gray-300 rounded"
+                          style="height: 600px;"
+                          title={`PowerPoint Viewer: ${fileName}`}
+                        ></iframe>
+                        <div class="mt-4 flex gap-3">
+                          <a
+                            href={fileUrl}
+                            download
+                            class="inline-flex items-center px-4 py-2 bg-black text-white hover:bg-gray-800 transition-colors rounded"
+                          >
+                            Download PowerPoint
+                          </a>
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center px-4 py-2 border-2 border-black text-black hover:bg-black hover:text-white transition-colors rounded"
+                          >
+                            Open in New Tab
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <!-- Generic file download -->
+                      <div class="text-center py-8">
+                        <div class="mb-4">
+                          <svg class="w-16 h-16 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <p class="text-gray-700 mb-4">{fileName}</p>
+                        <a
+                          href={fileUrl}
+                          download
+                          class="inline-flex items-center px-4 py-2 bg-black text-white hover:bg-gray-800 transition-colors rounded"
+                        >
+                          Download File
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div class="text-center py-12 bg-gray-50 rounded-lg">
+            <p class="text-gray-600">No files available for this resource.</p>
+          </div>
+        )}
+
+        <!-- Tags -->
+        {resource?.fields?.tags && Array.isArray(resource.fields.tags) && resource.fields.tags.length > 0 && (
+          <div class="mt-12 pt-8 border-t-2 border-black">
+            <div class="flex flex-wrap gap-3 items-center">
+              <span class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tags:</span>
+              {resource.fields.tags.filter((t: any) => t).map((tagName: string) => (
+                <a
+                  href={`/resources?tag=${encodeURIComponent(tagName || '')}`}
+                  class="text-sm bg-gray-100 text-black px-4 py-2 border border-gray-300 hover:bg-black hover:text-white hover:border-black transition-colors"
+                >
+                  {tagName}
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  </article>
+</Base>
