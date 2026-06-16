@@ -52,20 +52,6 @@ export async function getStaticPaths() {
         };
       });
     
-    // Debug: Log all slugs being generated
-    const slugs = validPosts.map((post: any) => post.fields.slug);
-    console.log('📝 Generated blog post slugs:', slugs);
-    console.log('📊 Total valid posts:', validPosts.length);
-    
-    // Log first post structure for debugging
-    if (validPosts.length > 0) {
-      console.log('📄 Sample post:', {
-        title: validPosts[0].fields.title,
-        slug: validPosts[0].fields.slug,
-        id: validPosts[0].sys.id
-      });
-    }
-    
     return validPosts.map((post: BlogPost) => ({
       params: { slug: post.fields.slug },
       props: { 

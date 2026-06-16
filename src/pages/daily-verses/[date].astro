@@ -10,19 +10,6 @@ export async function getStaticPaths() {
   try {
     const versesResponse = await getDailyVerses({ limit: 1000 });
     
-    // Debug: Log first verse to see structure
-    if (versesResponse.items && versesResponse.items.length > 0) {
-      const firstVerse = versesResponse.items[0];
-      console.log('First verse structure:', {
-        id: firstVerse?.sys?.id,
-        hasFields: !!firstVerse?.fields,
-        verseField: firstVerse?.fields?.verse,
-        verseType: typeof firstVerse?.fields?.verse,
-        verseIsEmpty: firstVerse?.fields?.verse && typeof firstVerse.fields.verse === 'object' && Object.keys(firstVerse.fields.verse).length === 0,
-        allFieldKeys: firstVerse?.fields ? Object.keys(firstVerse.fields) : []
-      });
-    }
-    
     // Get today's date for filtering out future verses
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -63,9 +50,6 @@ export async function getStaticPaths() {
         if (!verse.dateString) return false;
         return verse.dateString <= todayString;
       });
-    
-    console.log('📝 Generated daily verse dates:', validVerses.map((v: any) => v.dateString));
-    console.log('📊 Total valid verses:', validVerses.length);
     
     return validVerses.map((verse: DailyVerse & { dateString: string }) => ({
       params: { date: verse.dateString },

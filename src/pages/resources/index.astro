@@ -1,21 +1,12 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getResources, formatDate, getAssetUrl, resolveAsset } from '../../lib/contentful';
+import { getResources, formatDate, resolveAsset } from '../../lib/contentful';
 
-const url = new URL(Astro.request.url);
-const page = parseInt(url.searchParams.get('page') || '1');
-const tagParam = url.searchParams.get('tag') || '';
-const tags = tagParam ? tagParam.split(',').map(t => t.trim()).filter(t => t) : [];
 const limit = 9;
-const skip = (page - 1) * limit;
 
 let resourcesResponse: any = { items: [], total: 0, includes: {} };
 try {
-  const q: any = { limit, skip };
-  if (tags.length > 0) {
-    q.limit = 1000; // Get all resources for client-side filtering
-  }
-  resourcesResponse = await getResources(q);
+  resourcesResponse = await getResources({ limit: 1000 });
 } catch (e) {
   console.error('Error fetching resources:', e);
 }
@@ -23,48 +14,25 @@ try {
 const items: any[] = Array.isArray(resourcesResponse.items) ? resourcesResponse.items : [];
 const includes: any = resourcesResponse?.includes ?? {};
 
-// Filter and resolve resources
-const resources = items
+const allResources = items
   .filter((it) => it?.sys?.type === 'Entry' && it?.fields && it.fields.title && it.fields.slug)
   .map((it) => {
-    // Resolve file assets
     const resolvedFiles = (it.fields.files || [])
       .map((fileLink: any) => resolveAsset(fileLink, includes))
       .filter((file: any) => file !== null);
-    
+
     return {
       ...it,
       resolvedFiles
     };
   });
 
-// Filter by tags if specified
-let filteredResources = resources;
-if (tags.length > 0) {
-  filteredResources = resources.filter((resource: any) => {
-    const resourceTags = resource?.fields?.tags || [];
-    return tags.some(tag => resourceTags.includes(tag));
-  });
-}
-
-const totalResources: number = tags.length > 0 ? filteredResources.length : Number(resourcesResponse?.total ?? filteredResources.length);
+const totalResources = allResources.length;
 const totalPages = Math.max(1, Math.ceil(totalResources / limit));
-const hasNextPage = page < totalPages;
-const hasPrevPage = page > 1;
 
-// Paginate filtered resources
-const paginatedResources = filteredResources.slice(skip, skip + limit);
-
-// Get all unique tags
-let allTags: string[] = [];
-try {
-  const all = await getResources({ limit: 1000 });
-  const set = new Set<string>();
-  (all.items ?? []).forEach((r: any) => (r?.fields?.tags ?? []).forEach((t: string) => set.add(t)));
-  allTags = Array.from(set).sort();
-} catch (e) {
-  console.error('Error fetching tags:', e);
-}
+const tagSet = new Set<string>();
+allResources.forEach((r: any) => (r?.fields?.tags ?? []).forEach((t: string) => tagSet.add(t)));
+const allTags = Array.from(tagSet).sort();
 ---
 
 <Base
@@ -85,12 +53,18 @@ try {
       <!-- Tag Filtering -->
       {allTags.length > 0 && (
         <div class="mt-12">
-          <div class="flex flex-wrap justify-center gap-2" id="tag-filter-container">
+          <div
+            class="flex flex-wrap justify-center gap-2"
+            id="tag-filter-container"
+            role="group"
+            aria-label="Filter resources by tag"
+          >
             <button
               type="button"
               class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-white text-black border-2 border-white"
               data-tag="all"
               id="tag-all"
+              aria-pressed="true"
             >
               All Resources
             </button>
@@ -100,6 +74,7 @@ try {
                 class="px-4 py-2 rounded-full text-sm font-medium transition-colors bg-transparent text-gray-300 border border-gray-600 hover:border-white hover:text-white"
                 data-tag={tagName}
                 id={`tag-${tagName}`}
+                aria-pressed="false"
               >
                 {tagName}
               </button>
@@ -113,106 +88,114 @@ try {
   <!-- Resources Grid -->
   <section class="py-16 bg-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {paginatedResources.length > 0 ? (
+      {allResources.length > 0 ? (
         <>
           <!-- Results count -->
           <div class="mb-8">
-            <p class="text-gray-700">
-              {tags.length > 0 
-                ? `Showing resources tagged with "${tags.join('", "')}"` 
-                : 'Showing all resources'
-              }
-              ({totalResources} total)
+            <p class="text-gray-700" id="results-count">
+              Showing all resources ({totalResources} total)
             </p>
           </div>
 
           <!-- Resources Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" id="resources-grid">
-            {paginatedResources.map((resource) => (
-              <article 
-                class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all duration-300 resource-item"
-                data-tags={resource?.fields?.tags?.join(',') || ''}
-              >
-                <div class="p-6">
-                  <div class="flex items-center text-sm text-gray-600 mb-3">
-                    {resource?.fields?.publishDate && (
-                      <time datetime={resource.fields.publishDate}>
-                        {formatDate(resource.fields.publishDate)}
-                      </time>
+          <div
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            id="resources-grid"
+            data-total-items={totalResources}
+            data-total-pages={totalPages}
+          >
+            {allResources.map((resource, index) => {
+              const resourcePage = Math.floor(index / limit) + 1;
+              const isVisible = resourcePage === 1;
+
+              return (
+                <article
+                  class="bg-white border border-gray-200 overflow-hidden hover:border-black hover:shadow-lg transition-all duration-300 resource-item"
+                  data-tags={resource?.fields?.tags?.join(',') || ''}
+                  style={isVisible ? '' : 'display: none;'}
+                >
+                  <div class="p-6">
+                    <div class="flex items-center text-sm text-gray-600 mb-3">
+                      {resource?.fields?.publishDate && (
+                        <time datetime={resource.fields.publishDate}>
+                          {formatDate(resource.fields.publishDate)}
+                        </time>
+                      )}
+                      {resource?.resolvedFiles?.length > 0 && (
+                        <>
+                          {resource?.fields?.publishDate && <span class="mx-2">•</span>}
+                          <span>{resource.resolvedFiles.length} {resource.resolvedFiles.length === 1 ? 'file' : 'files'}</span>
+                        </>
+                      )}
+                    </div>
+                    <h2 class="text-xl font-bold text-black mb-3">
+                      <a href={`/resources/${resource?.fields?.slug}`} class="hover:underline transition-colors">
+                        {resource?.fields?.title ?? '(Untitled)'}
+                      </a>
+                    </h2>
+                    {resource?.fields?.description && (
+                      <p class="text-gray-700 mb-4 line-clamp-3">
+                        {resource.fields.description}
+                      </p>
                     )}
-                    {resource?.resolvedFiles?.length > 0 && (
-                      <>
-                        {resource?.fields?.publishDate && <span class="mx-2">•</span>}
-                        <span>{resource.resolvedFiles.length} {resource.resolvedFiles.length === 1 ? 'file' : 'files'}</span>
-                      </>
-                    )}
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <a
+                        href={`/resources/${resource?.fields?.slug}`}
+                        class="text-black hover:underline font-semibold transition-colors self-start border-b-2 border-black pb-1"
+                      >
+                        View resources →
+                      </a>
+                      {!!(resource?.fields?.tags?.length) && (
+                        <div class="flex flex-wrap gap-2">
+                          {resource.fields.tags.slice(0, 2).map((tagName: string) => (
+                            <span class="text-xs bg-gray-100 text-black px-3 py-1 border border-gray-300 whitespace-nowrap">
+                              {tagName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <h2 class="text-xl font-bold text-black mb-3">
-                    <a href={`/resources/${resource?.fields?.slug}`} class="hover:underline transition-colors">
-                      {resource?.fields?.title ?? '(Untitled)'}
-                    </a>
-                  </h2>
-                  {resource?.fields?.description && (
-                    <p class="text-gray-700 mb-4 line-clamp-3">
-                      {resource.fields.description}
-                    </p>
-                  )}
-                  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <a
-                      href={`/resources/${resource?.fields?.slug}`}
-                      class="text-black hover:underline font-semibold transition-colors self-start border-b-2 border-black pb-1"
-                    >
-                      View resources →
-                    </a>
-                    {!!(resource?.fields?.tags?.length) && (
-                      <div class="flex flex-wrap gap-2">
-                        {resource.fields.tags.slice(0, 2).map((tagName: string) => (
-                          <span class="text-xs bg-gray-100 text-black px-3 py-1 border border-gray-300 whitespace-nowrap">
-                            {tagName}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
 
           <!-- Pagination -->
           {totalPages > 1 && (
             <div class="mt-16 flex justify-center">
-              <nav class="flex items-center space-x-2">
-                {hasPrevPage && (
-                  <a
-                    href={`/resources?page=${page - 1}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
-                    class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
-                  >
-                    Previous
-                  </a>
-                )}
+              <nav class="flex items-center space-x-2" id="pagination-nav" aria-label="Pagination">
+                <button
+                  type="button"
+                  id="prev-btn"
+                  class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
+                  style="display: none;"
+                >
+                  Previous
+                </button>
 
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                  <a
-                    href={`/resources?page=${pageNum}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
-                    class={`px-3 py-2 text-sm font-medium transition-colors ${
-                      pageNum === page
+                  <button
+                    type="button"
+                    class={`px-3 py-2 text-sm font-medium transition-colors pagination-btn ${
+                      pageNum === 1
                         ? 'bg-black text-white border-2 border-black'
                         : 'text-black bg-white border-2 border-gray-300 hover:border-black'
                     }`}
+                    data-page={pageNum}
+                    aria-current={pageNum === 1 ? 'page' : undefined}
                   >
                     {pageNum}
-                  </a>
+                  </button>
                 ))}
 
-                {hasNextPage && (
-                  <a
-                    href={`/resources?page=${page + 1}${tags.length > 0 ? `&tag=${encodeURIComponent(tags.join(','))}` : ''}`}
-                    class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
-                  >
-                    Next
-                  </a>
-                )}
+                <button
+                  type="button"
+                  id="next-btn"
+                  class="px-3 py-2 text-sm font-medium text-black bg-white border-2 border-black hover:bg-black hover:text-white transition-colors"
+                >
+                  Next
+                </button>
               </nav>
             </div>
           )}
@@ -226,24 +209,21 @@ try {
           </div>
           <h3 class="text-lg font-medium text-black mb-2">No resources found</h3>
           <p class="text-gray-700 mb-6">
-            {tags.length > 0
-              ? `No resources found with the tags "${tags.join('", "')}".`
-              : 'No resources available at the moment.'
-            }
+            No resources available at the moment.
           </p>
-          {tags.length > 0 && (
-            <a
-              href="/resources"
-              class="inline-flex items-center px-6 py-3 border-2 border-black text-black font-semibold hover:bg-black hover:text-white transition-colors"
-            >
-              View All Resources
-            </a>
-          )}
         </div>
       )}
     </div>
   </section>
 </Base>
 
-<!-- Tag filtering script for Cloudflare Pages compatibility -->
-<script src="/js/tag-filter.js" defer></script>
+<script type="application/json" id="list-pagination-config">
+  {
+    "itemSelector": ".resource-item",
+    "limit": 9,
+    "gridId": "resources-grid",
+    "resultsAll": "Showing all resources",
+    "resultsTagged": "Showing resources tagged with"
+  }
+</script>
+<script src="/js/list-pagination.js" defer></script>

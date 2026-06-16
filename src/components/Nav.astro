@@ -6,6 +6,7 @@ const navItems = [
   { href: '/', label: 'Home' },
   { href: '/blog', label: 'Blog' },
   { href: '/daily-verses', label: 'Daily Verses' },
+  { href: '/resources', label: 'Resources' },
   { href: '/about', label: 'About' },
   { href: '/contact', label: 'Contact' },
 ];
@@ -13,6 +14,12 @@ const navItems = [
 const isActive = (href: string) => {
   if (href === '/daily-verses') {
     return currentPath === href || currentPath.startsWith('/daily-verses/');
+  }
+  if (href === '/resources') {
+    return currentPath === href || currentPath.startsWith('/resources/');
+  }
+  if (href === '/blog') {
+    return currentPath === href || currentPath.startsWith('/blog/');
   }
   return currentPath === href;
 };
@@ -38,6 +45,7 @@ const isActive = (href: string) => {
                 ? 'text-white border-b-2 border-white pb-1'
                 : 'text-gray-300 hover:text-white'
             }`}
+            aria-current={isActive(item.href) ? 'page' : undefined}
           >
             {item.label.toUpperCase()}
           </a>
@@ -53,10 +61,10 @@ const isActive = (href: string) => {
           aria-expanded="false"
           id="mobile-menu-button"
         >
-          <span class="sr-only">Open main menu</span>
+          <span class="sr-only" id="mobile-menu-label">Open main menu</span>
           <!-- Icon when menu is closed -->
           <svg
-            class="block h-6 w-6"
+            class="block h-6 w-6 menu-icon-open"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -67,7 +75,7 @@ const isActive = (href: string) => {
           </svg>
           <!-- Icon when menu is open -->
           <svg
-            class="hidden h-6 w-6"
+            class="hidden h-6 w-6 menu-icon-close"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -92,6 +100,7 @@ const isActive = (href: string) => {
               ? 'text-white border-l-4 border-white bg-white bg-opacity-10'
               : 'text-gray-300 hover:text-white hover:bg-white hover:bg-opacity-10'
           }`}
+          aria-current={isActive(item.href) ? 'page' : undefined}
         >
           {item.label.toUpperCase()}
         </a>
@@ -101,16 +110,28 @@ const isActive = (href: string) => {
 </nav>
 
 <script>
-  // Mobile menu toggle functionality
   const mobileMenuButton = document.getElementById('mobile-menu-button');
   const mobileMenu = document.getElementById('mobile-menu');
-  
+  const mobileMenuLabel = document.getElementById('mobile-menu-label');
+  const menuIconOpen = mobileMenuButton?.querySelector('.menu-icon-open');
+  const menuIconClose = mobileMenuButton?.querySelector('.menu-icon-close');
+
   if (mobileMenuButton && mobileMenu) {
     mobileMenuButton.addEventListener('click', () => {
       const isExpanded = mobileMenuButton.getAttribute('aria-expanded') === 'true';
-      
-      mobileMenuButton.setAttribute('aria-expanded', (!isExpanded).toString());
-      
+      const nextExpanded = !isExpanded;
+
+      mobileMenuButton.setAttribute('aria-expanded', nextExpanded.toString());
+
+      if (mobileMenuLabel) {
+        mobileMenuLabel.textContent = nextExpanded ? 'Close main menu' : 'Open main menu';
+      }
+
+      menuIconOpen?.classList.toggle('hidden', nextExpanded);
+      menuIconOpen?.classList.toggle('block', !nextExpanded);
+      menuIconClose?.classList.toggle('hidden', !nextExpanded);
+      menuIconClose?.classList.toggle('block', nextExpanded);
+
       if (isExpanded) {
         mobileMenu.classList.add('hidden');
       } else {

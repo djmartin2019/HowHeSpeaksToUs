@@ -146,7 +146,6 @@ export async function getAsset(assetId: string) {
       return null;
     }
     const data = await response.json();
-    console.log("Asset data:", data);
     return data;
   } catch (error) {
     console.error("Error fetching asset:", error);
