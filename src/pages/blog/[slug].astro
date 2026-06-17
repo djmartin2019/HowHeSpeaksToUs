@@ -1,15 +1,14 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getBlogPosts, getAssetUrl, resolveAsset } from '../../lib/contentful';
+import { getAllBlogPosts, getAssetUrl, resolveAsset, formatDate } from '../../lib/content-catalog';
 import { generateBreadcrumbStructuredData } from '../../lib/seo';
-import { formatDate } from '../../lib/contentful';
 import { renderRichText } from '../../lib/rich-text-renderer';
 import { BLOCKS } from '@contentful/rich-text-types';
 import type { BlogPost } from '../../types/contentful';
 
 export async function getStaticPaths() {
   try {
-    const postsResponse = await getBlogPosts({ limit: 1000 });
+    const postsResponse = await getAllBlogPosts();
     
     // Filter posts to ensure they have the required structure
     // Contentful Delivery API typically returns fields directly (not nested by locale)
@@ -56,6 +55,7 @@ export async function getStaticPaths() {
       params: { slug: post.fields.slug },
       props: { 
         post,
+        allPosts: validPosts,
         includes: postsResponse.includes || {}
       },
     }));
@@ -67,10 +67,11 @@ export async function getStaticPaths() {
 
 export interface Props {
   post: BlogPost;
+  allPosts: BlogPost[];
   includes: any;
 }
 
-const { post, includes } = Astro.props;
+const { post, allPosts, includes } = Astro.props;
 
 // Resolve the featured image using the proper resolveAsset function
 let featuredImageResolved = null;
@@ -181,20 +182,21 @@ const breadcrumbItems = [
 ];
 const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbItems);
 
-// Get related posts
+// Get related posts from catalog loaded at build time
 let relatedPosts: BlogPost[] = [];
-try {
-  if (post?.fields?.tags && post.fields.tags.length > 0) {
-    const relatedResponse = await getBlogPosts({
-      'fields.tags[in]': post.fields.tags[0],
-      limit: 3,
-    });
-    // Filter related posts to ensure they have the required structure
-    relatedPosts = (relatedResponse.items || [])
-      .filter((p: any) => p?.sys?.type === 'Entry' && p?.fields && p.fields.title && p.fields.slug && p.sys.id !== post.sys.id);
-  }
-} catch (error) {
-  console.error('Error fetching related posts:', error);
+if (post?.fields?.tags && post.fields.tags.length > 0) {
+  const tag = post.fields.tags[0];
+  relatedPosts = allPosts
+    .filter(
+      (p) =>
+        p?.sys?.type === 'Entry' &&
+        p?.fields &&
+        p.fields.title &&
+        p.fields.slug &&
+        p.sys.id !== post.sys.id &&
+        (p.fields.tags || []).includes(tag)
+    )
+    .slice(0, 3);
 }
 ---
 

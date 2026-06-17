@@ -1,6 +1,14 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getRecentBlogPosts, resolveAsset, getTodayVerse, getRecentDailyVerses, getRecentResources, formatDate, getAssetUrl } from '../lib/contentful';
+import {
+  getRecentBlogPosts,
+  resolveAsset,
+  getTodayVerse,
+  getRecentDailyVerses,
+  getRecentResources,
+  formatDate,
+  getAssetUrl,
+} from '../lib/content-catalog';
 import { renderRichText } from '../lib/rich-text-renderer';
 import { seoConfig } from '../config/seo';
 
@@ -25,45 +33,38 @@ let todayVerse = null;
 let verseHtml = '';
 let verseDateString = null;
 const todayDate = new Date().toISOString().split('T')[0];
+let recentVersesItems: any[] = [];
 
 try {
-  // First, try to get today's verse
+  const recentVersesResponse = await getRecentDailyVerses(10);
+  recentVersesItems = recentVersesResponse.items || [];
+
   todayVerse = await getTodayVerse();
-  
-  // Ensure today's verse is not in the future (shouldn't happen, but safety check)
+
   if (todayVerse?.fields?.date) {
     const verseDate = new Date(todayVerse.fields.date).toISOString().split('T')[0];
     if (verseDate > todayDate) {
-      todayVerse = null; // Reset if it's in the future
+      todayVerse = null;
     }
   }
-  
-  // If no verse for today, get the most recent verse (but not future)
+
   if (!todayVerse || !todayVerse.fields || !todayVerse.fields.verse) {
-    const recentVersesResponse = await getRecentDailyVerses(10);
-    if (recentVersesResponse?.items && recentVersesResponse.items.length > 0) {
-      // Find the most recent verse that's not in the future
-      const mostRecentVerse = recentVersesResponse.items.find((verse: any) => {
-        if (!verse?.fields?.verse) return false;
-        const verseDate = new Date(verse.fields.date).toISOString().split('T')[0];
-        return verseDate <= todayDate;
-      });
-      if (mostRecentVerse?.fields?.verse) {
-        todayVerse = mostRecentVerse;
-      }
+    const mostRecentVerse = recentVersesItems.find((verse: any) => {
+      if (!verse?.fields?.verse) return false;
+      const verseDate = new Date(verse.fields.date).toISOString().split('T')[0];
+      return verseDate <= todayDate;
+    });
+    if (mostRecentVerse?.fields?.verse) {
+      todayVerse = mostRecentVerse;
     }
   }
-  
-  // Render the verse HTML
+
   if (todayVerse?.fields?.verse) {
     verseHtml = renderRichText(todayVerse.fields.verse);
-    // Replace all gray text classes with white
     verseHtml = verseHtml.replace(/text-gray-\d+/g, 'text-white');
-    // Also replace any inline styles that might set gray colors
     verseHtml = verseHtml.replace(/color:\s*[^;]*gray[^;]*;/gi, 'color: #FFFFFF !important;');
   }
-  
-  // Get date string for the link
+
   if (todayVerse?.fields?.date) {
     const date = new Date(todayVerse.fields.date);
     verseDateString = date.toISOString().split('T')[0];
@@ -72,15 +73,14 @@ try {
   console.error('Error fetching today\'s verse:', error);
 }
 
-// Fetch previous verses from Contentful (excluding the verse we're showing)
+// Fetch previous verses (excluding the hero verse)
 let previousVerses = [];
 try {
-  const versesResponse = await getRecentDailyVerses(10); // Get more to filter properly
-  const displayedVerseDate = todayVerse?.fields?.date 
-    ? new Date(todayVerse.fields.date).toISOString().split('T')[0] 
+  const displayedVerseDate = todayVerse?.fields?.date
+    ? new Date(todayVerse.fields.date).toISOString().split('T')[0]
     : null;
-  
-  previousVerses = (versesResponse.items || [])
+
+  previousVerses = recentVersesItems
     .filter((verse) => {
       if (verse?.sys?.type !== 'Entry' || !verse?.fields) return false;
       // Exclude the verse we're displaying in the hero

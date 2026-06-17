@@ -1,12 +1,12 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getResources, formatDate, resolveAsset } from '../../lib/contentful';
+import { getAllResources, formatDate, resolveAsset } from '../../lib/content-catalog';
 
 const limit = 9;
 
 let resourcesResponse: any = { items: [], total: 0, includes: {} };
 try {
-  resourcesResponse = await getResources({ limit: 1000 });
+  resourcesResponse = await getAllResources();
 } catch (e) {
   console.error('Error fetching resources:', e);
 }

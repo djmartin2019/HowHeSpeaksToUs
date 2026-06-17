@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getDailyVerses, getDailyVerseByDate, formatDate } from '../../lib/contentful';
+import { getAllDailyVerses, formatDate } from '../../lib/content-catalog';
 import { generateBreadcrumbStructuredData } from '../../lib/seo';
 import { renderRichText } from '../../lib/rich-text-renderer';
 import { BLOCKS } from '@contentful/rich-text-types';
@@ -8,7 +8,7 @@ import type { DailyVerse } from '../../types/contentful';
 
 export async function getStaticPaths() {
   try {
-    const versesResponse = await getDailyVerses({ limit: 1000 });
+    const versesResponse = await getAllDailyVerses();
     
     // Get today's date for filtering out future verses
     const today = new Date();
@@ -69,42 +69,17 @@ export interface Props {
   includes: any;
 }
 
-const { verse: verseFromProps } = Astro.props;
+const { verse, includes: _includes } = Astro.props;
 const dateParam = Astro.params.date;
 
-// Get today's date for comparison
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 const todayString = today.toISOString().split('T')[0];
 
-// Fetch the verse directly using the date parameter - same approach as other pages
-// This ensures we get the fresh data with proper locale handling
-let verse = verseFromProps;
-try {
-  if (dateParam) {
-    // Check if the requested date is in the future
-    if (dateParam > todayString) {
-      // Return 404 for future verses
-      return Astro.redirect('/404');
-    }
-    
-    const fetchedVerse = await getDailyVerseByDate(dateParam);
-    if (fetchedVerse) {
-      verse = fetchedVerse;
-      
-      // Double-check the verse date is not in the future
-      const verseDate = verse.fields?.date ? new Date(verse.fields.date).toISOString().split('T')[0] : null;
-      if (verseDate && verseDate > todayString) {
-        return Astro.redirect('/404');
-      }
-    }
-  }
-} catch (error) {
-  console.error('Error fetching verse by date:', error);
-  // Fall back to props verse
+if (dateParam && dateParam > todayString) {
+  return Astro.redirect('/404');
 }
 
-// Final check: if verse date is in the future, redirect to 404
 if (verse?.fields?.date) {
   const verseDate = new Date(verse.fields.date).toISOString().split('T')[0];
   if (verseDate > todayString) {

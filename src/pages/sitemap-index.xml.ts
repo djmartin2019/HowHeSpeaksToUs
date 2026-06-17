@@ -1,14 +1,21 @@
-import { getBlogPosts, getResources, getDailyVerses } from '../lib/contentful';
+import {
+  getAllBlogPosts,
+  getAllResources,
+  getAllDailyVerses,
+  logContentfulCacheStats,
+} from '../lib/content-catalog';
 
 export async function GET() {
   const baseUrl = 'https://howgodspeakstous.com';
 
   try {
     const [postsResponse, resourcesResponse, versesResponse] = await Promise.all([
-      getBlogPosts({ limit: 1000 }),
-      getResources({ limit: 1000 }),
-      getDailyVerses({ limit: 1000 }),
+      getAllBlogPosts(),
+      getAllResources(),
+      getAllDailyVerses(),
     ]);
+
+    logContentfulCacheStats();
 
     const posts = (postsResponse.items || [])
       .filter((post: any) => post?.sys?.type === 'Entry' && post?.fields && post.fields.title && post.fields.slug);

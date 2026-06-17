@@ -1,11 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
-import { getPages } from '../lib/contentful';
+import { getAllPages } from '../lib/content-catalog';
 import type { Page } from '../types/contentful';
 
 export async function getStaticPaths() {
   try {
-    const pagesResponse = await getPages({ limit: 1000 });
+    const pagesResponse = await getAllPages();
     return pagesResponse.items.map((page: Page) => ({
       params: { slug: page.fields.slug },
       props: { page },

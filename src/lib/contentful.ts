@@ -52,21 +52,17 @@ const getEnvVars = () => ({
   CONTENTFUL_ENVIRONMENT: import.meta.env.CONTENTFUL_ENVIRONMENT || "master",
 });
 
-// Generic query function using fetch
-async function cfQuery(query: any): Promise<any> {
-  const env = getEnvVars();
-  const spaceId = env.CONTENTFUL_SPACE_ID;
-  const accessToken = env.CONTENTFUL_DELIVERY_TOKEN;
-  const environment = env.CONTENTFUL_ENVIRONMENT;
+// Generic query function using fetch — build-scoped in-memory cache
+const queryCache = new Map<string, Promise<any>>();
+let cacheHits = 0;
+let cacheMisses = 0;
 
-  if (!spaceId || !accessToken) {
-    console.warn("Contentful environment variables not configured");
-    return { items: [], total: 0, skip: 0, limit: 0 };
-  }
-
-  // Build query parameters
+function buildContentfulUrl(
+  query: any,
+  spaceId: string,
+  environment: string
+): string {
   const params = new URLSearchParams();
-  params.append("access_token", accessToken);
   params.append("content_type", query.content_type);
 
   if (query.locale) params.append("locale", query.locale);
@@ -81,7 +77,6 @@ async function cfQuery(query: any): Promise<any> {
     }
   }
 
-  // Add any additional query parameters
   Object.entries(query).forEach(([key, value]) => {
     if (
       !["content_type", "locale", "limit", "skip", "include", "order"].includes(
@@ -92,36 +87,124 @@ async function cfQuery(query: any): Promise<any> {
     }
   });
 
-  const url = `https://cdn.contentful.com/spaces/${spaceId}/environments/${environment}/entries?${params.toString()}`;
+  return `https://cdn.contentful.com/spaces/${spaceId}/environments/${environment}/entries?${params.toString()}`;
+}
 
-  try {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-    if (!response.ok)
-      throw new Error(
-        `Contentful API error: ${response.status} ${response.statusText}`
-      );
+async function fetchContentfulUrl(
+  url: string,
+  accessToken: string
+): Promise<any> {
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok)
+    throw new Error(
+      `Contentful API error: ${response.status} ${response.statusText}`
+    );
 
-    const json = await response.json();
+  const json = await response.json();
 
-    // 🧹 sanitize: keep only Entries that have fields
-    const items = Array.isArray(json.items)
-      ? json.items.filter((it: any) => it?.sys?.type === "Entry" && it?.fields)
-      : [];
+  const items = Array.isArray(json.items)
+    ? json.items.filter((it: any) => it?.sys?.type === "Entry" && it?.fields)
+    : [];
 
-    return {
-      ...json,
-      items, // cleaned items
-      includes: json.includes || {}, // always an object
-    };
-  } catch (error) {
-    console.error("Error fetching from Contentful:", error);
+  return {
+    ...json,
+    items,
+    includes: json.includes || {},
+  };
+}
+
+export function getContentfulCacheStats() {
+  return { hits: cacheHits, misses: cacheMisses, size: queryCache.size };
+}
+
+export function logContentfulCacheStats() {
+  if (import.meta.env.DEBUG_CONTENTFUL_CACHE) {
+    const stats = getContentfulCacheStats();
+    console.log(
+      `[Contentful cache] hits=${stats.hits} misses=${stats.misses} uniqueQueries=${stats.size}`
+    );
+  }
+}
+
+async function cfQuery(query: any): Promise<any> {
+  const env = getEnvVars();
+  const spaceId = env.CONTENTFUL_SPACE_ID;
+  const accessToken = env.CONTENTFUL_DELIVERY_TOKEN;
+  const environment = env.CONTENTFUL_ENVIRONMENT;
+
+  if (!spaceId || !accessToken) {
+    console.warn("Contentful environment variables not configured");
     return { items: [], total: 0, skip: 0, limit: 0, includes: {} };
   }
+
+  const url = buildContentfulUrl(query, spaceId, environment);
+
+  if (queryCache.has(url)) {
+    cacheHits++;
+    return queryCache.get(url)!;
+  }
+
+  cacheMisses++;
+  const request = fetchContentfulUrl(url, accessToken).catch((error) => {
+    queryCache.delete(url);
+    console.error("Error fetching from Contentful:", error);
+    return { items: [], total: 0, skip: 0, limit: 0, includes: {} };
+  });
+  queryCache.set(url, request);
+  return request;
+}
+
+function mergeIncludes(target: any, source: any) {
+  if (!source) return target;
+  for (const key of ["Asset", "Entry"] as const) {
+    if (!Array.isArray(source[key])) continue;
+    if (!target[key]) target[key] = [];
+    const existingIds = new Set(
+      target[key].map((item: any) => item?.sys?.id).filter(Boolean)
+    );
+    for (const item of source[key]) {
+      const id = item?.sys?.id;
+      if (id && !existingIds.has(id)) {
+        target[key].push(item);
+        existingIds.add(id);
+      }
+    }
+  }
+  return target;
+}
+
+export async function fetchAllEntries(
+  baseQuery: Record<string, any>,
+  pageSize = 1000
+): Promise<{ items: any[]; includes: any; total: number }> {
+  let skip = 0;
+  let allItems: any[] = [];
+  let mergedIncludes: any = {};
+  let total = 0;
+
+  while (true) {
+    const response = await cfQuery({
+      ...baseQuery,
+      limit: pageSize,
+      skip,
+    });
+    const batch = response.items || [];
+    allItems = allItems.concat(batch);
+    mergeIncludes(mergedIncludes, response.includes);
+    total = response.total ?? allItems.length;
+
+    if (batch.length < pageSize || allItems.length >= total) {
+      break;
+    }
+    skip += pageSize;
+  }
+
+  return { items: allItems, includes: mergedIncludes, total };
 }
 
 export function resolveAsset(link: any, includes: any) {

@@ -1,13 +1,13 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getBlogPosts, formatDate, getAssetUrl, resolveAsset } from '../../lib/contentful';
+import { getAllBlogPosts, formatDate, getAssetUrl, resolveAsset } from '../../lib/content-catalog';
 
 const limit = 9;
 
 // Fetch all posts — pagination is handled client-side for static hosting
 let postsResponse: any = { items: [], total: 0, includes: {} };
 try {
-  postsResponse = await getBlogPosts({ limit: 1000 });
+  postsResponse = await getAllBlogPosts();
 } catch (e) {
   console.error('Error fetching blog posts:', e);
 }

@@ -1,12 +1,12 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getResources, getResourceBySlug, formatDate, getAssetUrl, resolveAsset } from '../../lib/contentful';
+import { getAllResources, formatDate, getAssetUrl, resolveAsset } from '../../lib/content-catalog';
 import { generateBreadcrumbStructuredData } from '../../lib/seo';
 import type { Resource } from '../../types/contentful';
 
 export async function getStaticPaths() {
   try {
-    const resourcesResponse = await getResources({ limit: 1000 });
+    const resourcesResponse = await getAllResources();
     
     const validResources = (resourcesResponse.items || [])
       .filter((resource: any) => {
@@ -40,21 +40,7 @@ export interface Props {
   includes: any;
 }
 
-const { resource: resourceFromProps, includes } = Astro.props;
-const slugParam = Astro.params.slug;
-
-// Fetch the resource directly using the slug parameter
-let resource = resourceFromProps;
-try {
-  if (slugParam) {
-    const fetchedResource = await getResourceBySlug(slugParam);
-    if (fetchedResource) {
-      resource = fetchedResource;
-    }
-  }
-} catch (error) {
-  console.error('Error fetching resource by slug:', error);
-}
+const { resource, includes } = Astro.props;
 
 // Resolve file assets
 const resolvedFiles = (resource?.fields?.files || [])

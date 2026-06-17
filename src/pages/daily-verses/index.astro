@@ -1,6 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
-import { getDailyVerses, formatDate } from '../../lib/contentful';
+import { getAllDailyVerses, formatDate } from '../../lib/content-catalog';
 import { renderRichText } from '../../lib/rich-text-renderer';
 
 const limit = 12;
@@ -8,7 +8,7 @@ const limit = 12;
 // Fetch all verses — pagination and tag filtering handled client-side for static hosting
 let allVersesResponse = { items: [], total: 0, includes: {} };
 try {
-  allVersesResponse = await getDailyVerses({ limit: 1000 });
+  allVersesResponse = await getAllDailyVerses();
 } catch (e) {
   console.error('Error fetching daily verses:', e);
 }
