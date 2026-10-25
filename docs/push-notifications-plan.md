@@ -1,5 +1,20 @@
 # Task: Daily verse push notifications for howgodspeakstous.com
 
+## Status (October 25, 2026): built
+
+Decisions made with the owner:
+- Send time: 7am Chicago time all year. The workflow runs at 12:00 and 13:00 UTC; the script sends only between 7 and 11am Chicago time and records the date in KV (`meta:last-sent`), so exactly one run sends.
+- Sign-up button: footer, contact page and install page (`src/components/PushSignup.astro`).
+- VAPID subject: `mailto:howhespeakstous@gmail.com`.
+- Wording: title "Today's Verse", body "<passage>: <verse text>" (trimmed to 140 characters).
+- New `/privacy` page, plus a section on the About page.
+
+Changes from the original plan below:
+- Subscriptions are also stored in KV key metadata, so the morning send gets all of them with one `list` call per 1,000 sign-ups.
+- Cloudflare's KV API token permission covers the whole account, not a single namespace.
+- Subscribe and unsubscribe are one Pages Function: `functions/api/push/[action].js`.
+
+
 Plan only. Do not write code until this plan is reviewed. Read the codebase first, confirm the assumptions below, and come back with any conflicts or questions.
 
 ## Context

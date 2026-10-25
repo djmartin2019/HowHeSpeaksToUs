@@ -1,0 +1,63 @@
+# Sends today's verse as a phone notification to everyone who signed up.
+#
+# GitHub schedules use UTC and Chicago changes clocks twice a year, so this runs
+# at both 12:00 UTC (7am CDT) and 13:00 UTC (7am CST). The script sends only
+# between 7 and 11am Chicago time and only once per day. GitHub may start
+# scheduled runs a few minutes late.
+#
+# To test: Actions > Daily verse notification > Run workflow, with "force" checked.
+#
+# Secrets used (Settings > Secrets and variables > Actions):
+#   VAPID_PRIVATE_KEY, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_KV_NAMESPACE_ID,
+#   CLOUDFLARE_API_TOKEN, CONTENTFUL_SPACE_ID, CONTENTFUL_DELIVERY_TOKEN
+name: Daily verse notification
+
+on:
+  schedule:
+    - cron: "0 12 * * *"
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Send now, even outside 7-11am or if already sent today"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry run: check everything but don't send"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Never let two runs send at the same time.
+concurrency:
+  group: daily-verse-push
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Send notifications
+        run: node scripts/send-daily-push.mjs
+        env:
+          FORCE: ${{ inputs.force && 'true' || 'false' }}
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_KV_NAMESPACE_ID: ${{ secrets.CLOUDFLARE_KV_NAMESPACE_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          CONTENTFUL_DELIVERY_TOKEN: ${{ secrets.CONTENTFUL_DELIVERY_TOKEN }}

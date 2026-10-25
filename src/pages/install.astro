@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import PushSignup from '../components/PushSignup.astro';
 
 const shareIcon = `<svg class="inline-block w-6 h-6 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>`;
 const menuIcon = `<svg class="inline-block w-6 h-6 align-text-bottom" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>`;
@@ -78,10 +79,18 @@ const plusIcon = `<svg class="inline-block w-6 h-6 align-text-bottom" viewBox="0
         </button>
       </div>
 
+      <h2 id="notifications" class="text-3xl font-bold text-black mt-14 mb-4">Get the Daily Verse Each Morning</h2>
+      <p class="mb-4">
+        Once the app is on your home screen, you can get a notification each morning at 7am Central time with that
+        day's verse. Tap it to read the full devotional.
+      </p>
+      <div class="mb-2"><PushSignup /></div>
+
       <h2 class="text-3xl font-bold text-black mt-14 mb-4">Good to know</h2>
       <ul class="list-disc pl-6 space-y-3">
         <li>The app shows the newest verse whenever you're connected to the internet.</li>
         <li>Pages you've already opened can be read without internet.</li>
+        <li>To stop the morning notifications, tap <strong>Turn off daily verse notifications</strong> on this page or at the bottom of any page.</li>
         <li>To remove it, press and hold the icon, then choose <strong>Remove</strong> or <strong>Uninstall</strong>.</li>
       </ul>
     </div>

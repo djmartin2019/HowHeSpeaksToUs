@@ -41,6 +41,8 @@ export async function GET() {
       { url: '/resources', priority: '0.9', changefreq: 'weekly' },
       { url: '/about', priority: '0.8', changefreq: 'monthly' },
       { url: '/contact', priority: '0.7', changefreq: 'monthly' },
+      { url: '/install', priority: '0.5', changefreq: 'yearly' },
+      { url: '/privacy', priority: '0.3', changefreq: 'yearly' },
     ];
 
     const blogPages = posts.map((post: any) => ({

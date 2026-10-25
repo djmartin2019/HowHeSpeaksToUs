@@ -6,6 +6,8 @@
  * at build time with the list of app-shell files to precache (see
  * astro.config.mjs). Everything else is cached at runtime as people use the site.
  *
+ * Also shows the daily verse notifications (see the bottom of this file).
+ *
  * Not handled here on purpose, so the browser fetches them normally:
  * PDFs and files on assets.ctfassets.net (large; "Download" covers offline),
  * /api/* (contact form), POST requests, and other third-party origins.
@@ -16,6 +18,7 @@ import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from "workbox-strategi
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { clientsClaim } from "workbox-core";
+import { SUBSCRIBE_URL, UNSUBSCRIBE_URL, VAPID_PUBLIC_KEY, urlBase64ToUint8Array } from "./config/push.mjs";
 
 declare let self: ServiceWorkerGlobalScope;
 
@@ -160,5 +163,83 @@ self.addEventListener("message", (event) => {
 // page right away and pages visited from now on get cached for offline use.
 clientsClaim();
 
-// Future: push notifications for the daily verse would add "push" and
-// "notificationclick" listeners here.
+// ---------------------------------------------------------------------------
+// Daily verse notifications
+// ---------------------------------------------------------------------------
+
+// Sent each morning by scripts/send-daily-push.mjs as { title, body, url }.
+self.addEventListener("push", (event) => {
+  let data: { title?: string; body?: string; url?: string } = {};
+  try {
+    data = event.data?.json() ?? {};
+  } catch {
+    // Not JSON; fall back to the generic message below.
+  }
+  // "renotify" isn't in TypeScript's NotificationOptions yet.
+  const options: NotificationOptions & { renotify?: boolean } = {
+    body: data.body || "Today's verse is ready.",
+    icon: "/pwa-192x192.png",
+    // Same tag every day, so a new verse replaces yesterday's unread one
+    // instead of stacking up. renotify still buzzes for the new one.
+    tag: "daily-verse",
+    renotify: true,
+    data: { url: data.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(data.title || "Today's Verse", options));
+});
+
+// Tapping the notification opens that day's verse, reusing an open window.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const requested = new URL(event.notification.data?.url || "/", self.location.origin);
+  // Only ever open pages on this site.
+  const target = requested.origin === self.location.origin ? requested.href : self.location.origin + "/";
+
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const existing = windows.find((client) => new URL(client.url).origin === self.location.origin);
+      if (existing) {
+        try {
+          await existing.focus();
+          await existing.navigate(target);
+          return;
+        } catch {
+          // navigate() fails for windows this worker doesn't control; open a new one.
+        }
+      }
+      await self.clients.openWindow(target);
+    })(),
+  );
+});
+
+// Browsers occasionally replace a push subscription. Save the new one (and drop
+// the old one) so the reader keeps getting the daily verse without signing up again.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const change = event as ExtendableEvent & {
+    oldSubscription?: PushSubscription | null;
+    newSubscription?: PushSubscription | null;
+  };
+  change.waitUntil(
+    (async () => {
+      const subscription =
+        change.newSubscription ??
+        (await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        }));
+      await fetch(SUBSCRIBE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription.toJSON()),
+      });
+      if (change.oldSubscription?.endpoint) {
+        await fetch(UNSUBSCRIBE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: change.oldSubscription.endpoint }),
+        });
+      }
+    })(),
+  );
+});

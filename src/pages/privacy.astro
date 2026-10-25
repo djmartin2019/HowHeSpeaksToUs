@@ -1,0 +1,80 @@
+---
+import Base from '../layouts/Base.astro';
+
+// Update this date whenever the content below changes.
+const lastUpdated = 'October 25, 2026';
+---
+
+<Base
+  title="Privacy - How God Speaks To Us"
+  description="What information How God Speaks To Us collects, why, and how to turn things off."
+  canonical={`${Astro.url.origin}/privacy`}
+>
+  <section class="hero-safe relative bg-black text-white pt-32 pb-16 md:pt-40 md:pb-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Privacy</h1>
+      <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+        In short: we don't track you, we don't show ads, and we never sell or share your information.
+      </p>
+    </div>
+  </section>
+
+  <section class="py-16 bg-white">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-lg text-gray-800 leading-relaxed">
+      <p class="text-gray-600 mb-10">Last updated {lastUpdated}</p>
+
+      <h2 class="text-2xl md:text-3xl font-bold text-black mb-4">Reading the site</h2>
+      <p class="mb-10">
+        You can read everything on this site without signing up or telling us who you are. We don't use analytics,
+        advertising, or tracking cookies.
+      </p>
+
+      <h2 id="notifications" class="text-2xl md:text-3xl font-bold text-black mb-4">Daily verse notifications</h2>
+      <p class="mb-4">
+        If you turn on the daily verse notifications, your phone or browser gives us a delivery address for
+        notifications. That address comes from Apple, Google, Mozilla, or Microsoft, depending on your device. We
+        store that address and the codes needed to send to it, and nothing else. We don't get your name, email,
+        phone number, or location.
+      </p>
+      <p class="mb-4">We use it only to send one notification each morning with that day's verse.</p>
+      <p class="mb-10">
+        To stop them, tap <strong>Turn off daily verse notifications</strong> at the bottom of any page, and your
+        address is deleted. If you turn notifications off in your phone's settings or remove the app instead, the
+        address stops working and we delete it automatically.
+      </p>
+
+      <h2 class="text-2xl md:text-3xl font-bold text-black mb-4">Contact form</h2>
+      <p class="mb-10">
+        When you send a message through the <a href="/contact" class="underline">contact page</a>, your name, email
+        address, and message are emailed to us so we can reply. We don't add you to any mailing list.
+      </p>
+
+      <h2 class="text-2xl md:text-3xl font-bold text-black mb-4">Saved on your device</h2>
+      <p class="mb-10">
+        If you install the app, pages you've opened are saved on your phone so you can read them without internet.
+        The site also remembers on your device whether you closed the "Add this site to your phone" suggestion, so it
+        doesn't keep asking. This stays on your device and isn't sent to us. Clearing your browser's website data
+        removes it.
+      </p>
+
+      <h2 class="text-2xl md:text-3xl font-bold text-black mb-4">Services that help run the site</h2>
+      <p class="mb-4">
+        Like any website, pages and images are delivered by other companies' computers, which see basic technical
+        details such as your IP address while doing so:
+      </p>
+      <ul class="list-disc pl-6 space-y-2 mb-10">
+        <li><strong>Cloudflare</strong> hosts the site and stores notification sign-ups.</li>
+        <li><strong>Contentful</strong> stores our posts, verses, and images.</li>
+        <li><strong>Google Fonts</strong> provides the lettering used on the site.</li>
+        <li><strong>Microsoft</strong> displays PowerPoint files when you view one on a resource page.</li>
+        <li><strong>Resend</strong> delivers contact form messages to our inbox.</li>
+        <li><strong>Apple, Google, Mozilla, or Microsoft</strong> deliver notifications to your device, if you turn them on.</li>
+      </ul>
+
+      <h2 class="text-2xl md:text-3xl font-bold text-black mb-4">Questions</h2>
+      <p>
+        Email us at <a href="mailto:howhespeakstous@gmail.com" class="underline">howhespeakstous@gmail.com</a>.
+      </p>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,220 @@
+---
+// "Get the daily verse each morning" sign-up for push notifications.
+// Used in the footer, the contact page and the install page; several can be on
+// one page and they stay in sync. Hidden entirely where notifications can't work.
+//
+// iPhone/iPad only allow notifications in the installed home-screen app
+// (iOS 16.4+), so Safari tabs get a pointer to /install instead of a button.
+export interface Props {
+  /** "dark" for black backgrounds (footer), "light" for white ones. */
+  tone?: 'dark' | 'light';
+}
+const { tone = 'light' } = Astro.props;
+const dark = tone === 'dark';
+
+const muted = dark ? 'text-gray-400' : 'text-gray-700';
+const strong = dark ? 'text-white' : 'text-black';
+const primaryBtn = dark
+  ? 'bg-white text-black hover:bg-gray-100 focus-visible:ring-white focus-visible:ring-offset-black'
+  : 'bg-black text-white hover:bg-gray-800 focus-visible:ring-black focus-visible:ring-offset-white';
+const linkBtn = dark
+  ? 'text-gray-300 hover:text-white focus-visible:ring-white'
+  : 'text-gray-700 hover:text-black focus-visible:ring-black';
+---
+<div class="push-signup" data-push-signup hidden>
+  <!-- Signed out: offer the button. -->
+  <div data-push-state="ready" hidden>
+    <button
+      type="button"
+      data-push-action="subscribe"
+      class={`inline-flex items-center gap-2 px-5 py-3 text-base font-semibold rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60 ${primaryBtn}`}
+    >
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+      <span data-push-label>Get the daily verse each morning</span>
+    </button>
+    <p class={`mt-2 text-sm ${muted}`}>One notification at 7am Central time. Turn it off anytime.</p>
+  </div>
+
+  <!-- Signed up. -->
+  <div data-push-state="on" hidden>
+    <p class={`text-base font-semibold ${strong}`}>
+      <span aria-hidden="true">✓</span> You'll get the daily verse each morning.
+    </p>
+    <button
+      type="button"
+      data-push-action="unsubscribe"
+      class={`mt-1 underline text-base rounded focus:outline-none focus-visible:ring-2 disabled:opacity-60 ${linkBtn}`}
+    >
+      Turn off daily verse notifications
+    </button>
+  </div>
+
+  <!-- The reader (or their phone settings) blocked notifications for this site. -->
+  <div data-push-state="blocked" hidden>
+    <p class={`text-base ${muted}`}>
+      Notifications are turned off for this site. To get the daily verse each morning,
+      allow notifications for <strong class={strong}>How God Speaks To Us</strong> in your phone or browser settings,
+      then come back to this page.
+    </p>
+  </div>
+
+  <!-- iPhone/iPad in a Safari tab: notifications only work from the installed app. -->
+  <div data-push-state="install-first" hidden>
+    <p class={`text-base ${muted}`}>
+      On iPhone, add this site to your home screen first, then open it from there to turn on
+      the daily verse each morning.
+    </p>
+    <a href="/install#iphone" class={`inline-block mt-1 underline font-medium ${strong}`}>Show me how</a>
+  </div>
+
+  <!-- Installed app on an iOS version before 16.4. -->
+  <div data-push-state="update-ios" hidden>
+    <p class={`text-base ${muted}`}>
+      Daily verse notifications need iOS 16.4 or newer. You can update in Settings, then General, then Software Update.
+    </p>
+  </div>
+
+  <p data-push-message class={`mt-2 text-sm empty:hidden ${dark ? 'text-red-300' : 'text-red-700'}`} role="status" aria-live="polite"></p>
+</div>
+
+<script>
+  import {
+    SUBSCRIBE_URL,
+    UNSUBSCRIBE_URL,
+    VAPID_PUBLIC_KEY,
+    urlBase64ToUint8Array,
+  } from '../config/push.mjs';
+
+  type State = 'hidden' | 'ready' | 'on' | 'blocked' | 'install-first' | 'update-ios';
+
+  const roots = Array.from(document.querySelectorAll<HTMLElement>('[data-push-signup]'));
+
+  const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const ua = navigator.userAgent;
+  // iPadOS reports itself as a Mac, so also check for touch.
+  const isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = document.documentElement.classList.contains('is-standalone');
+
+  function render(state: State, message = '') {
+    for (const root of roots) {
+      root.hidden = state === 'hidden';
+      root.querySelectorAll<HTMLElement>('[data-push-state]').forEach((el) => {
+        el.hidden = el.dataset.pushState !== state;
+      });
+      root.querySelectorAll<HTMLButtonElement>('[data-push-action]').forEach((btn) => {
+        btn.disabled = false;
+      });
+      const label = root.querySelector('[data-push-label]');
+      if (label) label.textContent = 'Get the daily verse each morning';
+      const msg = root.querySelector('[data-push-message]');
+      if (msg) msg.textContent = message;
+    }
+  }
+
+  function setBusy(text: string) {
+    for (const root of roots) {
+      root.querySelectorAll<HTMLButtonElement>('[data-push-action]').forEach((btn) => {
+        btn.disabled = true;
+      });
+      const label = root.querySelector('[data-push-label]');
+      if (label) label.textContent = text;
+    }
+  }
+
+  // The service worker is registered by UpdateToast.astro. Don't wait forever
+  // if it never becomes ready (for example in the dev server, where it's off).
+  function serviceWorkerReady(): Promise<ServiceWorkerRegistration | null> {
+    return Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ]);
+  }
+
+  async function postJson(url: string, body: unknown) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`Request failed (${res.status})`);
+  }
+
+  async function currentState(): Promise<State> {
+    if (!supported) {
+      if (isIOS) return isStandalone ? 'update-ios' : 'install-first';
+      return 'hidden';
+    }
+    if (Notification.permission === 'denied') return 'blocked';
+    const registration = await serviceWorkerReady();
+    if (!registration) return 'hidden';
+    const subscription = await registration.pushManager.getSubscription();
+    return subscription ? 'on' : 'ready';
+  }
+
+  async function subscribe() {
+    // iPhone requires the permission request to happen right after the tap,
+    // so this must be the first thing we await.
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      render(permission === 'denied' ? 'blocked' : 'ready');
+      return;
+    }
+    setBusy('Turning on…');
+    try {
+      const registration = await serviceWorkerReady();
+      if (!registration) throw new Error('Service worker not ready');
+      const subscription =
+        (await registration.pushManager.getSubscription()) ??
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        }));
+      try {
+        await postJson(SUBSCRIBE_URL, subscription.toJSON());
+      } catch (error) {
+        // Don't leave the phone subscribed if the site didn't save it.
+        await subscription.unsubscribe().catch(() => {});
+        throw error;
+      }
+      render('on');
+    } catch (error) {
+      console.error('Push sign-up failed:', error);
+      render('ready', "Sorry, that didn't work. Please check your internet connection and try again.");
+    }
+  }
+
+  async function unsubscribe() {
+    for (const root of roots) {
+      root.querySelectorAll<HTMLButtonElement>('[data-push-action]').forEach((btn) => {
+        btn.disabled = true;
+      });
+    }
+    try {
+      const registration = await serviceWorkerReady();
+      const subscription = await registration?.pushManager.getSubscription();
+      if (subscription) {
+        // Tell the site first, then stop the phone receiving them. If the site
+        // can't be reached, unsubscribing still stops notifications; the send
+        // script removes the stale sign-up the next morning.
+        await postJson(UNSUBSCRIBE_URL, { endpoint: subscription.endpoint }).catch(() => {});
+        await subscription.unsubscribe();
+      }
+      render('ready', '');
+    } catch (error) {
+      console.error('Push unsubscribe failed:', error);
+      render('on', "Sorry, that didn't work. Please try again.");
+    }
+  }
+
+  if (roots.length) {
+    for (const root of roots) {
+      root.querySelector('[data-push-action="subscribe"]')?.addEventListener('click', subscribe);
+      root.querySelector('[data-push-action="unsubscribe"]')?.addEventListener('click', unsubscribe);
+    }
+    currentState()
+      .then((state) => render(state))
+      .catch(() => render('hidden'));
+  }
+</script>

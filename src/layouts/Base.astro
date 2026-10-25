@@ -4,6 +4,7 @@ import Seo from '../components/Seo.astro';
 import PwaHead from '../components/PwaHead.astro';
 import UpdateToast from '../components/UpdateToast.astro';
 import InstallPrompt from '../components/InstallPrompt.astro';
+import PushSignup from '../components/PushSignup.astro';
 import '../styles/global.css';
 
 export interface Props {
@@ -133,6 +134,9 @@ const {
                 A Daily Devotional and Meditations on God's Word.
                 Exploring how God speaks through His Word, His Spirit, His people, our God-given wisdom, and the circumstances of life.
               </p>
+              <div class="mt-6">
+                <PushSignup tone="dark" />
+              </div>
             </div>
             <div>
               <h3 class="text-lg font-semibold mb-4">Navigation</h3>
@@ -143,6 +147,7 @@ const {
                 <li><a href="/resources" class="hover:text-white transition-colors">Resources</a></li>
                 <li><a href="/about" class="hover:text-white transition-colors">About</a></li>
                 <li><a href="/contact" class="hover:text-white transition-colors">Contact</a></li>
+                <li><a href="/privacy" class="hover:text-white transition-colors">Privacy</a></li>
                 <li data-install-ui><a href="/install" class="hover:text-white transition-colors">Install the app</a></li>
               </ul>
             </div>
