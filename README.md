@@ -1,367 +1,284 @@
-# 🚀 Astro + Contentful Blog Starter
+# How God Speaks To Us
 
-[![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?logo=github)](https://github.com/djmartin2019/Astro-Contentful-Starter-Project/generate)
-[![Release](https://img.shields.io/github/v/release/djmartin2019/Astro-Contentful-Starter-Project)](https://github.com/djmartin2019/Astro-Contentful-Starter-Project/releases)
-[![Stars](https://img.shields.io/github/stars/djmartin2019/Astro-Contentful-Starter-Project?style=social)](https://github.com/djmartin2019/Astro-Contentful-Starter-Project/stargazers)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Demo](https://img.shields.io/badge/Live%20Demo-blue?logo=cloudflare)](https://astro-contentful-starter-project.pages.dev/)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen)](https://github.com/djmartin2019/Astro-Contentful-Starter-Project/actions)
+A daily devotional and Bible study site: **[howgodspeakstous.com](https://howgodspeakstous.com)**
 
-> **💡 Business Value**: Save 20+ hours of development time with this production-ready template that delivers enterprise-grade performance and SEO optimization for small businesses and developers.
+Each day has a verse with a short devotional. There are also Bible study blog posts and sermon resources (PowerPoints and PDFs). Readers can install the site on their phone like an app, read pages they've already opened without internet, and get the day's verse as a notification each morning.
 
-A **production-ready** blog starter template built with Astro and Contentful CMS. Features interactive multi-tag filtering, beautiful responsive design, and seamless Cloudflare Pages deployment.
+Most readers are church members reading on their phones, many of them not technical. Keeping things simple and reliable for them comes before clever features.
 
-![Homepage](https://github.com/user-attachments/assets/a8321de4-3169-4e61-86a0-76a0395cc562)
+---
 
-## 🎯 **Live Demo & Performance**
+## What readers can do
 
-<!-- Add your Lighthouse screenshot here when available -->
+| Page | What it is |
+| --- | --- |
+| `/` | Home: today's **Verse of the Day**, recent verses and recent posts |
+| `/daily-verses` | Every past daily verse, with tag filtering and pagination |
+| `/daily-verses/YYYY-MM-DD` | One day's verse and devotional |
+| `/blog`, `/blog/[slug]` | Bible study posts, with multi-tag filtering |
+| `/resources`, `/resources/[slug]` | Sermon resources, with tag filtering. PDFs and PowerPoints display in the page and can be downloaded |
+| `/about` | What the devotional is about, plus the app and notifications |
+| `/contact` | Contact form (emails the site owner) and the notification sign-up |
+| `/install` | Step-by-step "add to home screen" instructions for iPhone and Android |
+| `/privacy` | Plain-language privacy notice |
+| `/offline` | Shown in the app when a page isn't saved and there's no internet |
 
-**🚀 Live Demo**: [View the live site](https://astro-contentful-starter-project.pages.dev/)  
-**⚡ Performance**: 95+ Lighthouse scores across all metrics  
-**🌍 Global CDN**: Deployed on Cloudflare Pages for maximum speed
+**Also:**
 
-## ✨ What You Get
+- **Installable app.** It can be added to the home screen on iPhone and Android, and opens full screen with its own icon.
+- **Works offline.** Pages you've opened are saved on the device.
+- **Daily verse notification.** An optional notification arrives at 7am Central time. Tap it to open that day's verse.
+- **Update prompt.** When a new version is deployed, a small "New content available — Refresh" message appears.
 
-### 🎯 **Core Features**
+---
 
-- **Interactive Multi-Tag Filtering** - Click multiple tags to filter blog posts without page refreshes
-- **Beautiful Responsive Design** - Mobile-first approach with smooth animations
-- **Professional Demo Content** - 5 comprehensive blog posts about Astro and Contentful
-- **Image Optimization** - Automatic image resizing and lazy loading
-- **SEO Ready** - Built-in meta tags, Open Graph, and structured data
+## How it works
 
-### 🛠️ **Technical Stack**
+```
+                       ┌──────────────┐  publish   ┌──────────────────────┐
+  Site owner ────────► │  Contentful  │ ─webhook─► │ /api/contentful-     │
+  (writes content)     │  (content)   │            │ webhook (Pages Fn)   │
+                       └──────┬───────┘            └──────────┬───────────┘
+                              │ read at build time            │ deploy hook
+                              ▼                               ▼
+  GitHub push to main ─► ┌──────────────────────────────────────────────┐
+  Daily rebuild 12:10am ─►│ Cloudflare Pages: `astro build` → static site │
+  (GitHub Action)        └──────────────────────┬───────────────────────┘
+                                                ▼
+                         howgodspeakstous.com  (HTML + service worker)
 
-- **Astro 4.x** - Lightning-fast static site generation
-- **Contentful CMS** - Headless content management via REST API
-- **TypeScript** - Full type safety and developer experience
-- **Tailwind CSS** - Utility-first styling with custom design system
-- **Cloudflare Pages** - Optimized for global CDN deployment
+  Daily verse notification (GitHub Action, 7am Chicago)
+    Contentful (today's verse?) + Cloudflare KV (sign-ups) ─► push to phones
+```
 
-### 🎨 **Interactive Features**
+### The site is built ahead of time
 
-- **Smooth Animations** - Fade and scale effects during filtering
-- **Visual Feedback** - Active tag highlighting and result counts
-- **URL Synchronization** - Shareable filtered URLs
-- **Keyboard Accessible** - Full keyboard navigation support
+- **Fully static.** [Astro](https://astro.build) 4 builds every page to HTML on Cloudflare Pages, using content from Contentful's read-only API. Readers' browsers never talk to Contentful, and no Contentful token reaches the browser.
+- **One fetch per content type.** `src/lib/content-catalog.ts` fetches each content type once per build and shares it across all pages, which keeps Contentful API usage low.
 
-## 📱 **Responsive Design**
+### What triggers a rebuild
 
-<div align="center">
-  <img src="https://github.com/user-attachments/assets/85d5ba37-75e3-4bb7-a4ef-a4c09c7effef" alt="Responsive Design Showcase" width="50%"/>
-</div>
+1. **Publishing in Contentful.** A Contentful webhook calls `functions/api/contentful-webhook.js`, which calls the Cloudflare deploy hook.
+2. **Pushing to `main`** on GitHub.
+3. **Every night at 12:10am Chicago time.** `.github/workflows/daily-rebuild.yml` rebuilds so the homepage switches to the new day's verse even when nothing was published.
 
-### 🎯 **Mobile-First Approach**
+### What "today" means
 
-- **📱 Mobile Optimized** - Perfect touch targets and readable text
-- **💻 Desktop Enhanced** - Rich layouts with optimal spacing
-- **🔄 Fluid Breakpoints** - Seamless transitions between screen sizes
-- **⚡ Performance Focused** - Optimized images and layouts for all devices
+"Today" is always the date in **America/Chicago** (`src/lib/dates.ts`), not UTC. Using UTC would flip to tomorrow's verse around 7pm Central.
 
-**Perfect on every device** - From phones to large desktop screens, your content looks stunning everywhere.
+Verses dated in the future are hidden until their day, so verses can be entered weeks ahead. The homepage is only as current as the last build, which is why the nightly rebuild exists.
 
-## 🚀 Quick Start (5 Minutes)
+### Content model (Contentful)
 
-### Step 1: Clone and Install
+| Content type | Fields used by the site |
+| --- | --- |
+| `dailyVerse` | `date`, `passage` (e.g. "1 Corinthians 2:10 ESV"), `verse` (rich text), `description` (rich text), `tag` |
+| `blogPost` | `title`, `slug`, `excerpt`, `content` (rich text), `featuredImage`, `author`, `publishDate`, `tags` |
+| `resource` | `title`, `slug`, `description`, `files` (PDF/PowerPoint assets), `publishDate`, `tags` |
+
+Images come from `images.ctfassets.net` and files from `assets.ctfassets.net`. PowerPoints are shown with Microsoft's Office web viewer.
+
+---
+
+## The app (PWA)
+
+The app is built with [`@vite-pwa/astro`](https://vite-pwa-org.netlify.app/frameworks/astro), which uses Workbox. The service worker is custom code in `src/sw.ts`, built in `injectManifest` mode.
+
+| What | How it's cached | Why |
+| --- | --- | --- |
+| App shell (CSS, JS, icons, `/offline`) | Precached at install | Small, and versioned by the build |
+| `/` and `/daily-verses/*` | **Network first** (3s timeout), cached copy as fallback | Never show yesterday's verse to someone who's online |
+| Other pages | Stale-while-revalidate | Instant from cache, refreshed in the background |
+| Contentful images | Cache first, max 60 images / 30 days | Images rarely change |
+| Google Fonts | Standard Workbox recipe | |
+| PDFs/PowerPoints, `/api/*`, other sites | **Not cached** | Files are large, and "Download" covers reading them offline |
+
+**Update prompt.** A new version waits until the reader taps **Refresh** in the update message (`src/components/UpdateToast.astro`), and the app checks for updates hourly. Nothing changes under the reader without them tapping.
+
+**Install.** Install prompting lives in `src/components/InstallPrompt.astro`:
+
+- On Android/Chrome, the browser's own install prompt is offered.
+- On iPhone Safari, short "Share → Add to Home Screen" instructions are shown instead.
+- The banner only appears from the second visit on, stays away for 90 days after it's dismissed, and never shows inside the installed app.
+
+**iPhone layout.** In the installed app, the iPhone status bar overlays the page (`black-translucent`). The navbar is pinned and padded for the notch, and the heroes are pushed down to match. This is done with the `.is-standalone` class, set in `src/components/PwaHead.astro` before the page renders.
+
+**Icons.** Icons are generated from `public/icon.svg` with `npm run icons` (config: `pwa-assets.config.ts`).
+
+---
+
+## Daily verse notifications
+
+```
+Phone taps "Get the daily verse each morning"
+  └─► POST /api/push/subscribe ─► Cloudflare KV (PUSH_SUBSCRIPTIONS)
+
+GitHub Action at 12:00 and 13:00 UTC
+  └─► scripts/send-daily-push.mjs
+        ├─ only between 7–11am Chicago time, and only once per day (KV key meta:last-sent)
+        ├─ looks up today's verse in Contentful; none → sends nothing
+        ├─ lists all sign-ups from KV, sends a Web Push to each
+        └─ deletes sign-ups whose phone has unsubscribed (HTTP 404/410)
+
+Phone's service worker shows "Today's Verse — <passage>: <verse>"
+  └─► tapping opens /daily-verses/YYYY-MM-DD
+```
+
+### Why two runs
+
+GitHub schedules run in UTC, and Chicago changes clocks twice a year, so the job runs at both 7am CDT and 7am CST. The script makes sure exactly one of them sends.
+
+### Files
+
+| File | Role |
+| --- | --- |
+| `src/components/PushSignup.astro` | Sign-up button (footer, contact page, install page) |
+| `functions/api/push/[action].js` | Saves (`subscribe`) or removes (`unsubscribe`) sign-ups in KV |
+| `src/sw.ts` (bottom) | Shows the notification and opens the verse page when it's tapped |
+| `scripts/send-daily-push.mjs` | The morning send |
+| `.github/workflows/daily-verse-push.yml` | Runs the morning send on a schedule |
+| `src/config/push.mjs` | Public notification key, contact email, API paths |
+
+### The sign-up button's states
+
+The sign-up button adapts to the device:
+
+- Normal: "Get the daily verse each morning".
+- Signed up: a confirmation and **Turn off**.
+- Notifications blocked: how to re-enable them in settings.
+- iPhone Safari: "add to home screen first". iOS only allows notifications from the installed app, on iOS 16.4 or later.
+- Older iOS: an "update iOS" message.
+
+### What's stored
+
+Only the browser's push address and its encryption keys are stored, with no names or emails (see `/privacy`). Each sign-up is also stored in the KV key's metadata, so one `list` call returns up to 1,000 sign-ups. That keeps the morning send well inside Cloudflare's free KV limits.
+
+### Notification keys (VAPID)
+
+The public key is committed in `src/config/push.mjs`. The private key exists only as the `VAPID_PRIVATE_KEY` GitHub secret, with a backup in the owner's password manager.
+
+> ⚠️ **Never replace the key pair casually.** Every existing sign-up stops working and everyone would have to sign up again.
+
+---
+
+## Running it locally
+
+**Requirements:** Node.js 20 or newer (CI uses 22).
 
 ```bash
-git clone https://github.com/djmartin2019/Astro-Contentful-Starter-Project.git
-cd Astro-Contentful-Starter-Project
 npm install
+cp env.example .env     # then fill in the Contentful values
+npm run dev             # http://localhost:4321
 ```
 
-### Step 2: Set Up Contentful (Automated)
+### What doesn't run in `npm run dev`
 
-```bash
-# Copy environment template
-cp .env.example .env
+- **The service worker** (offline mode, update prompt, notifications) is turned off in dev. To test the app behavior, build and preview:
 
-# Run the automated setup (creates content types + adds demo content)
-npm run contentful:init
-```
+  ```bash
+  npm run build && npm run preview
+  ```
 
-**That's it!** The automated setup will:
+  Test offline behavior by stopping the preview server. Chrome DevTools' "Offline" checkbox doesn't apply to the service worker's own requests.
 
-- ✅ Create your Contentful space content types
-- ✅ Add 5 professional blog posts about Astro and Contentful
-- ✅ Set up featured images and metadata
-- ✅ Configure all necessary fields
+- **Cloudflare Pages Functions** (`functions/`) aren't served by Astro, so the notification sign-up API and the Contentful webhook only work when deployed. For the contact form, `src/pages/api/contact.ts` stands in during development.
 
-### Step 3: Start Development
+### Scripts
 
-```bash
-npm run dev
-```
-
-Visit `http://localhost:4321` to see your blog in action!
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Dev server with hot reload |
+| `npm run build` | Production build to `dist/` (also builds `sw.js` and `manifest.webmanifest`) |
+| `npm run preview` | Serve the production build locally |
+| `npm run type-check` | `astro check` (some older files still have type errors; the build doesn't depend on it) |
+| `npm run lint` / `lint:fix` | ESLint |
+| `npm run icons` | Regenerate app icons from `public/icon.svg` |
 
 ---
 
-## 🔧 Manual Contentful Setup (Advanced)
+## Configuration
 
-If you prefer to set up Contentful manually or want to understand the process:
+### Cloudflare Pages (project `howhespeakstous`)
 
-### 1. Create a Contentful Account
+- **Build command:** `npm run build`
+- **Output directory:** `dist`
 
-1. Go to [contentful.com](https://www.contentful.com) and sign up
-2. Create a new space (choose "Empty space")
-3. Note your **Space ID** (found in Settings → General settings)
+| Setting | Type | Used by |
+| --- | --- | --- |
+| `CONTENTFUL_SPACE_ID` | Environment variable | Build |
+| `CONTENTFUL_DELIVERY_TOKEN` | Environment variable (secret) | Build (read-only Contentful token) |
+| `CONTENTFUL_ENVIRONMENT` | Environment variable | Build (defaults to `master`) |
+| `RESEND_API_KEY` | Environment variable (secret) | `functions/api/contact.js`, which sends contact form emails via [Resend](https://resend.com) |
+| `CLOUDFLARE_DEPLOY_HOOK_URL` | Environment variable (secret) | `functions/api/contentful-webhook.js` |
+| `CONTENTFUL_WEBHOOK_SECRET` | Environment variable (optional) | Verifies the Contentful webhook signature, if set |
+| `PUSH_SUBSCRIPTIONS` | **KV namespace binding** | `functions/api/push/[action].js` |
 
-### 2. Get Your API Keys
+### GitHub Actions secrets
 
-1. Go to **Settings → API keys**
-2. Create a new **Content Delivery API** token
-3. Go to **Settings → API keys → Content management tokens**
-4. Create a new **Personal access token** (for content management)
+| Secret | Used by |
+| --- | --- |
+| `CLOUDFLARE_DEPLOY_HOOK_URL` | Daily rebuild |
+| `VAPID_PRIVATE_KEY` | Daily verse notification |
+| `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_KV_NAMESPACE_ID`, `CLOUDFLARE_API_TOKEN` | Daily verse notification (reading and cleaning up sign-ups; the token needs **Workers KV Storage: Edit**) |
+| `CONTENTFUL_SPACE_ID`, `CONTENTFUL_DELIVERY_TOKEN` | Daily verse notification (looking up today's verse) |
 
-### 3. Configure Environment Variables
-
-Edit your `.env` file with your Contentful credentials:
-
-```env
-# Contentful Configuration
-CONTENTFUL_SPACE_ID=your_space_id_here
-CONTENTFUL_DELIVERY_TOKEN=your_delivery_token_here
-CONTENTFUL_MANAGEMENT_TOKEN=your_management_token_here
-CONTENTFUL_ENVIRONMENT=master
-```
-
-### 4. Set Up Content Types (Automated)
+Set each secret on its own, for example:
 
 ```bash
-# This creates the required content types in Contentful
-npm run contentful:setup
+grep '^CONTENTFUL_SPACE_ID=' .env | cut -d= -f2- | gh secret set CONTENTFUL_SPACE_ID
 ```
 
-**What gets created:**
+Never paste several `gh secret set` commands on one line.
 
-- **Blog Post** content type with fields:
-  - Title (Short text)
-  - Slug (Short text, unique)
-  - Excerpt (Long text)
-  - Content (Rich text)
-  - Featured Image (Media)
-  - Author (Short text)
-  - Publish Date (Date & time)
-  - Tags (Short text, list)
+### Contentful
 
-### 5. Add Demo Content (Optional)
+- A webhook on publish points to `https://howgodspeakstous.com/api/contentful-webhook`. See [WEBHOOK_SETUP.md](WEBHOOK_SETUP.md).
+- Cloudflare's bot protection must let Contentful's webhook through. See [CLOUDFLARE_FIREWALL_SETUP.md](CLOUDFLARE_FIREWALL_SETUP.md).
 
-```bash
-# This adds 5 professional blog posts about Astro and Contentful
-npm run contentful:seed
-```
+---
 
-**Demo content includes:**
+## Common tasks
 
-- 5 comprehensive blog posts with realistic content
-- Professional featured images from Unsplash
-- Proper metadata and SEO optimization
-- Multiple tags for testing the filtering system
+**Publish a new verse, post or resource.** Publish it in Contentful. The site rebuilds automatically within a few minutes. Verses can be dated ahead; each one appears on its day.
 
-## 🎯 Interactive Features Demo
+**Send a test notification.** GitHub → **Actions** → **Daily verse notification** → **Run workflow**, with **force** checked. This sends today's verse to everyone signed up, so only do it while the only sign-ups are your own. Tick **dry run** to check everything without sending. A forced run doesn't count as the morning send.
 
-### Multi-Tag Filtering System
+**Change the notification time.** Edit `SEND_FROM_HOUR` and `SEND_UNTIL_HOUR` in `scripts/send-daily-push.mjs`, and the two `cron` lines in `.github/workflows/daily-verse-push.yml` (in UTC: one for CDT, one for CST). Also update the "7am Central" wording in `PushSignup.astro`, `install.astro` and `about.astro`.
 
-![BlogDemo-Astro](https://github.com/user-attachments/assets/9f3e177d-ff4c-417d-b532-14c127da8682)
+**If the homepage verse didn't change today:** Check GitHub → **Actions** → **Daily rebuild**. GitHub **pauses scheduled workflows after 60 days without repository activity**; re-enable it from that page.
 
-**Try it yourself**: [Live Demo](https://astro-contentful-starter-project.pages.dev/)
+**If notifications didn't arrive:** Open the latest **Daily verse notification** run. The last line reads `Sent: N. Removed expired: N. Failed: N.`
 
-- **Click any tag** to filter posts instantly
-- **Select multiple tags** to find posts matching any of them
-- **Smooth animations** with fade and scale effects
-- **URL synchronization** - share filtered results
-- **Visual feedback** - active tags are highlighted
-- **Result counting** - see how many posts match your filters
+- "Missing required environment variable" means a GitHub secret is missing or empty.
+- "No daily verse for …" means no verse is dated today in Contentful.
 
-### Professional Demo Content
+**Update the privacy page.** Edit `src/pages/privacy.astro` and change its `lastUpdated` date. Do this whenever the site starts collecting or sharing anything new.
 
-The seed script creates 5 comprehensive blog posts:
+---
 
-1. **🚀 Getting Started with Astro** - Introduction to Astro's islands architecture
-2. **📝 Contentful CMS Guide** - Complete guide to headless content management
-3. **⚡ Astro + Contentful Integration** - Building lightning-fast sites
-4. **🎯 Headless CMS Benefits** - Why headless is the future
-5. **☁️ Cloudflare Pages Deployment** - Step-by-step deployment guide
-
-**Each post includes:**
-
-- ✅ **Realistic content** with code examples and best practices
-- ✅ **Professional metadata** (author, publish date, tags)
-- ✅ **High-quality featured images** from Unsplash
-- ✅ **SEO-optimized excerpts** and descriptions
-- ✅ **Multiple tags** for testing the filtering system
-- ✅ **Responsive design** that looks great on all devices
-
-## ☁️ Cloudflare Pages Deployment
-
-This template is **optimized for Cloudflare Pages** with zero configuration needed:
-
-### Why Cloudflare Pages?
-
-- ⚡ **Global CDN** - Lightning-fast loading worldwide
-- 🆓 **Free tier** - Perfect for personal projects and demos
-- 🔧 **Zero config** - No server setup required
-- 📱 **Mobile optimized** - Automatic image optimization
-- 🔒 **HTTPS included** - SSL certificates managed automatically
-
-### Quick Deploy to Cloudflare Pages
-
-[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/djmartin2019/Astro-Contentful-Starter-Project)
-
-**Note**: After clicking the button, you'll still need to:
-
-1. Set up your Contentful environment variables in Cloudflare Pages dashboard
-2. Run `npm run contentful:init` to add demo content
-
-### Manual Deployment Steps
-
-1. **Connect your repository** to Cloudflare Pages
-2. **Set build settings**:
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-   - **Node.js version**: `18` or higher
-3. **Add environment variables** in Cloudflare Pages dashboard:
-   - `CONTENTFUL_SPACE_ID` - Your Contentful space ID
-   - `CONTENTFUL_DELIVERY_TOKEN` - Your Contentful delivery token
-   - `CONTENTFUL_ENVIRONMENT` - `master` (default)
-4. **Deploy!** - Your site will be live in minutes
-
-### Environment Variables for Production
-
-```env
-CONTENTFUL_SPACE_ID=your_space_id
-CONTENTFUL_DELIVERY_TOKEN=your_delivery_token
-CONTENTFUL_ENVIRONMENT=master
-```
-
-**Note**: You don't need `CONTENTFUL_MANAGEMENT_TOKEN` in production - that's only for the seed script.
-
-## 📁 Project Structure
+## Project structure
 
 ```
+.github/workflows/      daily-rebuild.yml, daily-verse-push.yml
+functions/api/          Cloudflare Pages Functions: contact.js, contentful-webhook.js, push/[action].js
+scripts/                send-daily-push.mjs
+public/                 icons, robots.txt, js/ (tag filtering + pagination for list pages)
 src/
-├── components/     # Reusable components
-├── layouts/        # Page layouts
-├── lib/           # Contentful client & helpers
-├── pages/         # Astro pages
-├── types/         # TypeScript types
-└── styles/        # Global styles
+  components/           Nav, Seo, PwaHead, UpdateToast, InstallPrompt, PushSignup
+  config/               seo.ts, push.mjs
+  layouts/Base.astro    shared <head>, navbar, footer
+  lib/                  contentful.ts (API client), content-catalog.ts (per-build cache),
+                        dates.ts (Chicago "today"), rich-text-renderer.ts, seo.ts
+  pages/                routes (see "What readers can do")
+  styles/global.css     Tailwind + safe-area and installed-app rules
+  sw.ts                 service worker: caching, offline page, notifications
+docs/                   development plans for the PWA and notifications
 ```
 
-## 🛠️ Available Scripts
-
-### Development
-
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build locally
-- `npm run type-check` - Check TypeScript types
-
-### Contentful Management
-
-- `npm run contentful:init` - **Complete setup** (content types + demo content)
-- `npm run contentful:setup` - Create content types only
-- `npm run contentful:seed` - Add demo blog posts only
-
-## 🔧 Troubleshooting
-
-### Common Issues
-
-**❌ "CONTENTFUL_SPACE_ID is not defined"**
-
-- Make sure you've copied `.env.example` to `.env`
-- Verify your environment variables are set correctly
-- Restart your development server after changing `.env`
-
-**❌ "Contentful API error: 401 Unauthorized"**
-
-- Check your `CONTENTFUL_DELIVERY_TOKEN` is correct
-- Ensure the token has read permissions
-- Verify your `CONTENTFUL_SPACE_ID` matches your space
-
-**❌ "Contentful API error: 404 Not Found"**
-
-- Run `npm run contentful:setup` to create content types
-- Check that your space ID is correct
-- Ensure you're using the right environment (usually `master`)
-
-**❌ Images not showing**
-
-- The fallback system will show placeholder images
-- For real Contentful images, ensure your content types are set up
-- Check that featured images are published in Contentful
-
-**❌ Build fails on Cloudflare Pages**
-
-- Ensure all environment variables are set in Cloudflare Pages dashboard
-- Check that your Contentful tokens have the correct permissions
-- Verify your Node.js version is 18 or higher
-
-### Getting Help
-
-1. **Check the logs** - Look for specific error messages
-2. **Verify setup** - Run `npm run contentful:init` to ensure everything is configured
-3. **Test locally** - Make sure `npm run dev` works before deploying
-4. **Check Contentful** - Verify your content is published in the Contentful web app
-
-## 🎨 Customization
-
-### Design System
-
-- **Colors & Branding**: Update `tailwind.config.cjs`
-- **Typography**: Modify font families in `src/layouts/Base.astro`
-- **Layout**: Edit `src/layouts/Base.astro` for global layout changes
-- **Components**: Customize individual components in `src/components/`
-
-### Content Management
-
-- **Blog Posts**: Add/edit content in Contentful web app
-- **Content Types**: Modify fields in Contentful (requires re-seeding)
-- **Images**: Upload new featured images in Contentful
-- **Tags**: Add new tags in Contentful and they'll appear automatically
-
-### Advanced Customization
-
-- **Filtering Logic**: Modify `src/pages/blog/index.astro` for different filtering behavior
-- **Styling**: Customize `src/styles/global.css` for global styles
-- **SEO**: Update meta tags in `src/layouts/Base.astro`
-- **Performance**: Optimize images and add caching strategies
-
-## 📚 Learn More
-
-### Official Documentation
-
-- [Astro Documentation](https://docs.astro.build/) - Learn Astro's islands architecture
-- [Contentful Documentation](https://www.contentful.com/developers/) - Master headless CMS
-- [Cloudflare Pages](https://developers.cloudflare.com/pages/) - Deploy globally
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first styling
-
-### Related Projects
-
-- [Astro Examples](https://github.com/withastro/astro/tree/main/examples) - More Astro templates
-- [Contentful Examples](https://github.com/contentful/example-apps) - Contentful integrations
-- [Cloudflare Examples](https://github.com/cloudflare/workers-examples) - Edge computing examples
-
-## 🤝 Contributing
-
-Found a bug or want to add a feature? Contributions are welcome!
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-MIT License - feel free to use this template for your projects! See [LICENSE](LICENSE) for details.
+**Tech:** Astro 4 · TypeScript · Tailwind CSS · Contentful · Cloudflare Pages + Pages Functions + Workers KV · Workbox · Web Push (`web-push`) · Resend · GitHub Actions
 
 ---
 
-## ⭐ Show Your Support
+## License
 
-If this project helped you, please give it a ⭐ on GitHub! It helps others discover this template.
-
-**Happy coding!** 🚀
+[MIT](LICENSE). Built by [DJM-Tech](https://djm-tech.dev/).

@@ -21,7 +21,6 @@ export interface CatalogResponse {
 let blogPostsCatalog: Promise<CatalogResponse> | null = null;
 let dailyVersesCatalog: Promise<CatalogResponse> | null = null;
 let resourcesCatalog: Promise<CatalogResponse> | null = null;
-let pagesCatalog: Promise<CatalogResponse> | null = null;
 
 export async function getAllBlogPosts(): Promise<CatalogResponse> {
   if (!blogPostsCatalog) {
@@ -57,17 +56,6 @@ export async function getAllResources(): Promise<CatalogResponse> {
   return resourcesCatalog;
 }
 
-export async function getAllPages(): Promise<CatalogResponse> {
-  if (!pagesCatalog) {
-    pagesCatalog = fetchAllEntries({
-      content_type: "page",
-      order: ["fields.title"],
-      include: 1,
-    });
-  }
-  return pagesCatalog;
-}
-
 export async function getBlogPostBySlug(slug: string) {
   const { items } = await getAllBlogPosts();
   return items.find((post) => post?.fields?.slug === slug) ?? null;
@@ -87,11 +75,6 @@ export async function getDailyVerseByDate(dateString: string) {
 export async function getResourceBySlug(slug: string) {
   const { items } = await getAllResources();
   return items.find((resource) => resource?.fields?.slug === slug) ?? null;
-}
-
-export async function getPageBySlug(slug: string) {
-  const { items } = await getAllPages();
-  return items.find((page) => page?.fields?.slug === slug) ?? null;
 }
 
 export async function getRecentBlogPosts(limit = 5) {
