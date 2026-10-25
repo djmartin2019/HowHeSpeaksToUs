@@ -1,6 +1,9 @@
 ---
 import Nav from '../components/Nav.astro';
 import Seo from '../components/Seo.astro';
+import PwaHead from '../components/PwaHead.astro';
+import UpdateToast from '../components/UpdateToast.astro';
+import InstallPrompt from '../components/InstallPrompt.astro';
 import '../styles/global.css';
 
 export interface Props {
@@ -44,7 +47,6 @@ const {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="format-detection" content="telephone=no" />
-    <meta name="theme-color" content="#000000" />
     <meta name="color-scheme" content="light dark" />
     
     <!-- SEO Component -->
@@ -64,9 +66,8 @@ const {
       category={category}
     />
 
-    <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <!-- Favicon, home-screen icons, web app manifest -->
+    <PwaHead />
     
     <!-- Fonts optimization - preconnect early for DNS resolution -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -123,7 +124,7 @@ const {
       </main>
 
       <!-- Footer -->
-      <footer class="bg-black text-white py-12" role="contentinfo">
+      <footer class="bg-black text-white pt-12 pb-safe-footer px-safe" role="contentinfo">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div class="md:col-span-2">
@@ -142,6 +143,7 @@ const {
                 <li><a href="/resources" class="hover:text-white transition-colors">Resources</a></li>
                 <li><a href="/about" class="hover:text-white transition-colors">About</a></li>
                 <li><a href="/contact" class="hover:text-white transition-colors">Contact</a></li>
+                <li data-install-ui><a href="/install" class="hover:text-white transition-colors">Install the app</a></li>
               </ul>
             </div>
           </div>
@@ -176,6 +178,9 @@ const {
         </div>
       </footer>
     </div>
+
+    <UpdateToast />
+    <InstallPrompt />
   </body>
 </html>
 

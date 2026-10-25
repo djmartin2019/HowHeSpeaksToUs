@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import { getAllDailyVerses, formatDate } from '../../lib/content-catalog';
 import { renderRichText } from '../../lib/rich-text-renderer';
+import { todayInSiteTz } from '../../lib/dates';
 
 const limit = 12;
 
@@ -15,9 +16,7 @@ try {
 
 const allItems = Array.isArray(allVersesResponse.items) ? allVersesResponse.items : [];
 
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-const todayString = today.toISOString().split('T')[0];
+const todayString = todayInSiteTz();
 
 const allValidVerses = allItems
   .filter((it) => {

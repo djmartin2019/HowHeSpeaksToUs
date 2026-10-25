@@ -8,6 +8,7 @@ import {
   resolveAsset,
   logContentfulCacheStats,
 } from "./contentful";
+import { todayInSiteTz } from "./dates";
 
 export { formatDate, getAssetUrl, resolveAsset, logContentfulCacheStats };
 
@@ -118,6 +119,5 @@ export async function getRecentResources(limit = 5) {
 }
 
 export async function getTodayVerse() {
-  const today = new Date().toISOString().split("T")[0];
-  return getDailyVerseByDate(today);
+  return getDailyVerseByDate(todayInSiteTz());
 }

@@ -1,0 +1,90 @@
+---
+// Shown by the service worker (src/sw.ts) when someone opens a page that
+// isn't saved on their device and there's no internet connection.
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="You're offline - How God Speaks To Us" description="You're offline. Pages you've already read are still available." noindex={true}>
+  <section class="relative bg-black text-white pt-32 pb-16 md:pt-40 md:pb-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">You're offline</h1>
+      <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+        This page isn't saved on your device yet. Check your internet connection and try again.
+      </p>
+      <button
+        type="button"
+        id="offline-retry"
+        class="mt-8 inline-flex items-center px-6 py-3 bg-white text-black text-lg font-semibold rounded hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+      >
+        Try again
+      </button>
+    </div>
+  </section>
+
+  <section class="py-16 bg-white">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-2xl md:text-3xl font-bold text-black mb-4">Pages you can read offline</h2>
+      <p id="offline-pages-empty" class="text-lg text-gray-700">
+        Pages you open while connected are saved here, so you can read them later without internet.
+      </p>
+      <ul id="offline-pages" class="divide-y divide-gray-200 border-y border-gray-200" hidden></ul>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // Must match PAGES_CACHE in src/sw.ts.
+  const PAGES_CACHE = 'pages';
+  const MAX_ITEMS = 50;
+  const SITE_SUFFIX = /\s+[-|–]\s+How God Speaks To Us$/;
+
+  document.getElementById('offline-retry')?.addEventListener('click', () => location.reload());
+
+  async function listSavedPages() {
+    if (!('caches' in window)) return;
+    const list = document.getElementById('offline-pages');
+    const empty = document.getElementById('offline-pages-empty');
+    if (!list || !empty) return;
+
+    try {
+      const cache = await caches.open(PAGES_CACHE);
+      const requests = (await cache.keys()).slice(-MAX_ITEMS).reverse(); // newest first
+      const items = await Promise.all(
+        requests.map(async (request) => {
+          const url = new URL(request.url);
+          let title = url.pathname === '/' ? 'Home' : url.pathname;
+          try {
+            const response = await cache.match(request);
+            const html = response ? await response.text() : '';
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            if (doc.title && url.pathname !== '/') title = doc.title.replace(SITE_SUFFIX, '');
+          } catch {
+            // Keep the path as the label.
+          }
+          return { href: url.pathname + url.search, title };
+        }),
+      );
+
+      // Home first, then everything else.
+      items.sort((a, b) => (a.href === '/' ? -1 : b.href === '/' ? 1 : 0));
+
+      for (const item of items) {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = item.href;
+        a.textContent = item.title;
+        a.className = 'block py-4 text-lg text-black underline hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-black';
+        li.appendChild(a);
+        list.appendChild(li);
+      }
+      if (items.length) {
+        list.hidden = false;
+        empty.textContent = 'These pages are saved on your device:';
+      }
+    } catch {
+      // Cache access failed; the empty message stays.
+    }
+  }
+
+  listSavedPages();
+</script>

@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import { getAllDailyVerses, formatDate } from '../../lib/content-catalog';
 import { generateBreadcrumbStructuredData } from '../../lib/seo';
 import { renderRichText } from '../../lib/rich-text-renderer';
+import { todayInSiteTz } from '../../lib/dates';
 import { BLOCKS } from '@contentful/rich-text-types';
 import type { DailyVerse } from '../../types/contentful';
 
@@ -11,9 +12,7 @@ export async function getStaticPaths() {
     const versesResponse = await getAllDailyVerses();
     
     // Get today's date for filtering out future verses
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayString = today.toISOString().split('T')[0];
+    const todayString = todayInSiteTz();
     
     // Filter verses to ensure they have the required structure
     const validVerses = (versesResponse.items || [])
@@ -72,9 +71,7 @@ export interface Props {
 const { verse, includes: _includes } = Astro.props;
 const dateParam = Astro.params.date;
 
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-const todayString = today.toISOString().split('T')[0];
+const todayString = todayInSiteTz();
 
 if (dateParam && dateParam > todayString) {
   return Astro.redirect('/404');
@@ -150,7 +147,7 @@ const breadcrumbStructuredData = generateBreadcrumbStructuredData(breadcrumbItem
 
   <article class="bg-white">
     <!-- Custom Navbar for Daily Verses -->
-    <nav class="bg-black text-white" role="navigation" aria-label="Daily verse navigation">
+    <nav class="bg-black text-white pt-safe px-safe" role="navigation" aria-label="Daily verse navigation">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-16 md:h-20">
           <!-- Breadcrumb on the left -->

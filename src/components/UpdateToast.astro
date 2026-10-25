@@ -1,0 +1,85 @@
+---
+// Registers the service worker and shows a small "Refresh" toast when a new
+// version of the site is ready. Nothing changes until the reader taps Refresh.
+---
+<div class="pwa-toast-region px-safe" role="status" aria-live="polite">
+  <div id="pwa-update-toast" class="pwa-toast mx-4 sm:mx-auto max-w-md bg-black text-white rounded-lg shadow-lg border border-gray-700 p-4" hidden>
+    <div class="flex flex-wrap items-center gap-3">
+      <p class="flex-1 min-w-[10rem] text-base">New content available.</p>
+      <button
+        type="button"
+        id="pwa-update-refresh"
+        class="px-4 py-2 bg-white text-black font-semibold rounded hover:bg-gray-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+      >
+        Refresh
+      </button>
+      <button
+        type="button"
+        id="pwa-update-dismiss"
+        class="px-3 py-2 text-gray-300 underline hover:text-white transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+      >
+        Not now
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .pwa-toast-region {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    z-index: 60;
+    pointer-events: none;
+  }
+  .pwa-toast {
+    pointer-events: auto;
+    animation: pwa-toast-in 200ms ease-out;
+  }
+  @keyframes pwa-toast-in {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pwa-toast { animation: none; }
+  }
+</style>
+
+<script>
+  import { registerSW } from 'virtual:pwa-register';
+
+  const toast = document.getElementById('pwa-update-toast');
+  const refreshBtn = document.getElementById('pwa-update-refresh') as HTMLButtonElement | null;
+  const dismissBtn = document.getElementById('pwa-update-dismiss');
+
+  const updateSW = registerSW({
+    onNeedRefresh() {
+      if (!toast) return;
+      toast.hidden = false;
+      // The install banner shares the bottom of the screen; get it out of the way.
+      document.dispatchEvent(new CustomEvent('pwa:update-shown'));
+    },
+    onRegisteredSW(_swUrl, registration) {
+      // An installed app can stay open for days. Check for a new version hourly.
+      if (!registration) return;
+      setInterval(() => {
+        if (navigator.onLine) registration.update().catch(() => {});
+      }, 60 * 60 * 1000);
+    },
+    onRegisterError(error) {
+      console.error('Service worker registration failed:', error);
+    },
+  });
+
+  refreshBtn?.addEventListener('click', () => {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = 'Refreshing…';
+    // Activates the waiting service worker, then reloads the page.
+    updateSW(true);
+  });
+
+  dismissBtn?.addEventListener('click', () => {
+    if (toast) toast.hidden = true;
+  });
+</script>

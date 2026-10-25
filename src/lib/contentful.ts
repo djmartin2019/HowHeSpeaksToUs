@@ -2,6 +2,7 @@
  * Cloudflare-compatible Contentful Client and Helpers
  * Uses fetch instead of Node SDK for Cloudflare Pages compatibility
  */
+import { todayInSiteTz } from "./dates";
 
 // Types for Contentful content
 export interface BlogPost {
@@ -369,9 +370,7 @@ export async function getDailyVerseByDate(dateString: string) {
 
 // getTodayVerse - gets the verse for today's date
 export async function getTodayVerse() {
-  const today = new Date();
-  const dateString = today.toISOString().split('T')[0];
-  return getDailyVerseByDate(dateString);
+  return getDailyVerseByDate(todayInSiteTz());
 }
 
 // getRecentDailyVerses

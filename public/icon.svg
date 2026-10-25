@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#ffffff"/>
+  <g fill="none" stroke="#111111" stroke-width="16" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Flame -->
+    <path d="M264 88c-28 28-44 56-42 84 2 20 16 34 34 34 20 0 34-14 34-34 0-22-16-34-20-56-2-10-4-20-6-28z"/>
+    <!-- Open book -->
+    <path d="M256 236c-36-26-84-36-124-30v168c40-6 88 4 124 32"/>
+    <path d="M256 236c36-26 84-36 124-30v168c-40-6-88 4-124 32"/>
+    <path d="M256 236v170"/>
+  </g>
+</svg>

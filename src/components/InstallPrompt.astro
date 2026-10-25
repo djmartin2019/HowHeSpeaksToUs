@@ -1,0 +1,164 @@
+---
+// "Install app" banner.
+// - Android/Chrome: uses the browser's install prompt (beforeinstallprompt).
+// - iPhone/iPad Safari: no prompt exists, so show short instructions.
+// Never shown in the installed app, before a second visit, or for 90 days
+// after being dismissed. Everything is hidden if storage is unavailable.
+const { pathname } = Astro.url;
+const skip = pathname.startsWith('/install') || pathname.startsWith('/offline');
+---
+{!skip && (
+  <div id="install-banner" class="install-banner px-safe" data-install-ui hidden>
+    <div class="mx-4 sm:mx-auto max-w-md bg-white text-black rounded-lg shadow-lg border border-gray-300 p-4" role="region" aria-labelledby="install-banner-title">
+      <div class="flex items-start gap-3">
+        <img src="/pwa-64x64.png" alt="" width="40" height="40" class="rounded flex-shrink-0 border border-gray-200" />
+        <div class="flex-1">
+          <p id="install-banner-title" class="font-semibold">Add this site to your phone</p>
+
+          <div data-install-variant="android" hidden>
+            <p class="text-gray-700 mt-1">Open daily verses with one tap, like an app.</p>
+            <button
+              type="button"
+              id="install-banner-button"
+              class="mt-3 px-4 py-2 bg-black text-white font-semibold rounded hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+            >
+              Install app
+            </button>
+          </div>
+
+          <div data-install-variant="ios" hidden>
+            <p class="text-gray-700 mt-1">
+              Tap
+              <svg class="inline-block w-5 h-5 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="the Share button">
+                <path d="M12 3v12M8 7l4-4 4 4" />
+                <path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1" />
+              </svg>
+              <strong>Share</strong>, then <strong>Add to Home Screen</strong>.
+            </p>
+            <a href="/install" class="inline-block mt-2 underline font-medium">Show me how</a>
+          </div>
+        </div>
+        <button
+          type="button"
+          id="install-banner-close"
+          class="p-1 text-gray-600 hover:text-black rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-black"
+          aria-label="Dismiss install suggestion"
+        >
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+<style>
+  .install-banner {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    z-index: 50;
+    animation: install-banner-in 200ms ease-out;
+  }
+  @keyframes install-banner-in {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .install-banner { animation: none; }
+  }
+</style>
+
+<script>
+  const DISMISS_KEY = 'hgstu:install-dismissed-at';
+  const VISITS_KEY = 'hgstu:visit-count';
+  const SESSION_KEY = 'hgstu:visit-counted';
+  const DISMISS_DAYS = 90;
+
+  // Storage can throw (private mode, blocked site data); treat that as "don't show".
+  function read(storage: Storage, key: string): string | null {
+    try { return storage.getItem(key); } catch { return null; }
+  }
+  function write(storage: Storage, key: string, value: string): boolean {
+    try { storage.setItem(key, value); return true; } catch { return false; }
+  }
+
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+  // Count visits (sessions), not page views.
+  let visits = 0;
+  try {
+    visits = Number(read(localStorage, VISITS_KEY) || '0');
+    if (!read(sessionStorage, SESSION_KEY)) {
+      visits += 1;
+      write(localStorage, VISITS_KEY, String(visits));
+      write(sessionStorage, SESSION_KEY, '1');
+    }
+  } catch {
+    visits = 0;
+  }
+
+  const dismissedAt = Number(read(localStorage, DISMISS_KEY) || '0');
+  const recentlyDismissed = Date.now() - dismissedAt < DISMISS_DAYS * 24 * 60 * 60 * 1000;
+  const eligible = !isStandalone && visits >= 2 && !recentlyDismissed;
+
+  const banner = document.getElementById('install-banner');
+  const closeBtn = document.getElementById('install-banner-close');
+  const installBtn = document.getElementById('install-banner-button');
+
+  function show(variant: 'android' | 'ios') {
+    if (!banner) return;
+    banner.querySelector<HTMLElement>(`[data-install-variant="${variant}"]`)!.hidden = false;
+    banner.hidden = false;
+  }
+  function hide() {
+    if (banner) banner.hidden = true;
+  }
+  function dismiss() {
+    write(localStorage, DISMISS_KEY, String(Date.now()));
+    hide();
+  }
+
+  closeBtn?.addEventListener('click', dismiss);
+  document.addEventListener('pwa:update-shown', hide);
+
+  // Android / desktop Chrome and Edge.
+  type InstallPromptEvent = Event & {
+    prompt: () => Promise<void>;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  };
+  let deferredPrompt: InstallPromptEvent | null = null;
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    // Stop Chrome's own mini-infobar; we offer our own button instead.
+    event.preventDefault();
+    deferredPrompt = event as InstallPromptEvent;
+    if (eligible) show('android');
+  });
+
+  installBtn?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    hide();
+    await deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if (outcome === 'dismissed') dismiss();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    write(localStorage, DISMISS_KEY, String(Date.now()));
+    hide();
+  });
+
+  // iPhone/iPad Safari. iPadOS reports itself as a Mac, so also check touch.
+  // Other iOS browsers and in-app browsers (Facebook, Instagram) can't add to
+  // the home screen the same way, so skip them.
+  const ua = navigator.userAgent;
+  const isIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isOtherBrowser = /crios|fxios|edgios|opios|gsa\/|fban|fbav|instagram|line\//i.test(ua);
+  if (eligible && isIOS && !isOtherBrowser) show('ios');
+</script>

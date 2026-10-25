@@ -1,0 +1,30 @@
+# Rebuild the site once a day so the homepage "Verse of the Day" changes
+# even when nothing was published in Contentful.
+#
+# Setup: add the Cloudflare Pages deploy hook URL as a repository secret
+# named CLOUDFLARE_DEPLOY_HOOK_URL (Settings > Secrets and variables > Actions).
+#
+# Note: GitHub pauses scheduled workflows after 60 days with no repo activity.
+name: Daily rebuild
+
+on:
+  schedule:
+    # 06:10 UTC = 12:10am CST / 1:10am CDT, always just after Chicago midnight.
+    - cron: "10 6 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Cloudflare Pages deploy hook
+        env:
+          DEPLOY_HOOK: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "::error::CLOUDFLARE_DEPLOY_HOOK_URL secret is not set"
+            exit 1
+          fi
+          curl -fsS -X POST "$DEPLOY_HOOK"

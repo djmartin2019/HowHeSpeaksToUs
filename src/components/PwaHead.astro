@@ -1,0 +1,16 @@
+---
+// PWA <head> tags: web manifest and home-screen icons.
+// iOS ignores manifest icons, so it needs its own apple-touch-icon.
+---
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="icon" href="/favicon.ico" sizes="48x48" />
+<link rel="icon" href="/icon.svg" sizes="any" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+
+<!-- Mark the page as running in the installed app before it renders, so
+     install links and banners ([data-install-ui]) never flash there. -->
+<script is:inline>
+  if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+    document.documentElement.classList.add('is-standalone');
+  }
+</script>

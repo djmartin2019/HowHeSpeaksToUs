@@ -1,3 +1,4 @@
+import { todayInSiteTz } from '../lib/dates';
 import {
   getAllBlogPosts,
   getAllResources,
@@ -23,9 +24,7 @@ export async function GET() {
     const resources = (resourcesResponse.items || [])
       .filter((resource: any) => resource?.sys?.type === 'Entry' && resource?.fields && resource.fields.title && resource.fields.slug);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayString = today.toISOString().split('T')[0];
+    const todayString = todayInSiteTz();
 
     const verses = (versesResponse.items || [])
       .filter((verse: any) => verse?.sys?.type === 'Entry' && verse?.fields?.date && verse?.fields?.verse)

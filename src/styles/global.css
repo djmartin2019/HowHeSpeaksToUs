@@ -25,6 +25,27 @@
 }
 
 @layer utilities {
+  /*
+   * iPhone safe areas. With viewport-fit=cover and the black-translucent
+   * status bar (installed app), the page runs under the notch/status bar and
+   * home indicator. These keep content clear of them; env() is 0 elsewhere.
+   */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .px-safe {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .pb-safe-footer {
+    padding-bottom: calc(3rem + env(safe-area-inset-bottom));
+  }
+
+  /* Hide install UI inside the installed app (class set in PwaHead.astro). */
+  .is-standalone [data-install-ui] {
+    display: none !important;
+  }
+
   /* Custom utility classes can go here */
   .text-balance {
     text-wrap: balance;

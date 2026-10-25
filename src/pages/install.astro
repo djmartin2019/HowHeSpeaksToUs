@@ -1,0 +1,116 @@
+---
+import Base from '../layouts/Base.astro';
+
+const shareIcon = `<svg class="inline-block w-6 h-6 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>`;
+const menuIcon = `<svg class="inline-block w-6 h-6 align-text-bottom" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>`;
+const plusIcon = `<svg class="inline-block w-6 h-6 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>`;
+---
+
+<Base
+  title="Install the App - How God Speaks To Us"
+  description="Add How God Speaks To Us to your phone's home screen in a few taps. Step-by-step instructions for iPhone and Android."
+  canonical={`${Astro.url.origin}/install`}
+>
+  <section class="relative bg-black text-white pt-32 pb-16 md:pt-40 md:pb-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">Install the App</h1>
+      <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+        Put How God Speaks To Us on your phone's home screen. Then the daily verse is always one tap away, like any other app.
+      </p>
+      <p class="text-lg text-gray-400 max-w-2xl mx-auto mt-4">It's free and takes less than a minute.</p>
+    </div>
+  </section>
+
+  <section class="py-16 bg-white">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-lg text-gray-800">
+      <p id="install-already" class="hidden mb-10 p-4 border-2 border-black rounded font-semibold text-black">
+        You're already using the installed app. You're all set!
+      </p>
+
+      <h2 id="iphone" class="text-3xl font-bold text-black mb-6">iPhone or iPad</h2>
+      <ol class="space-y-6 list-none p-0 mb-6">
+        <li class="flex gap-4">
+          <span class="flex-shrink-0 w-10 h-10 rounded-full bg-black text-white font-bold flex items-center justify-center" aria-hidden="true">1</span>
+          <div>Open <strong>howgodspeakstous.com</strong> in <strong>Safari</strong> (the blue compass app).</div>
+        </li>
+        <li class="flex gap-4">
+          <span class="flex-shrink-0 w-10 h-10 rounded-full bg-black text-white font-bold flex items-center justify-center" aria-hidden="true">2</span>
+          <div>Tap the <strong>Share</strong> button <Fragment set:html={shareIcon} />: a square with an arrow pointing up. On iPhone it's at the bottom of the screen; on iPad it's at the top.</div>
+        </li>
+        <li class="flex gap-4">
+          <span class="flex-shrink-0 w-10 h-10 rounded-full bg-black text-white font-bold flex items-center justify-center" aria-hidden="true">3</span>
+          <div>Scroll down and tap <strong>Add to Home Screen</strong> <Fragment set:html={plusIcon} />.</div>
+        </li>
+        <li class="flex gap-4">
+          <span class="flex-shrink-0 w-10 h-10 rounded-full bg-black text-white font-bold flex items-center justify-center" aria-hidden="true">4</span>
+          <div>Tap <strong>Add</strong> in the top corner. The icon will appear on your home screen.</div>
+        </li>
+      </ol>
+      <p class="text-gray-600 mb-14">Don't see "Add to Home Screen"? Make sure you're in Safari, not another app's built-in browser.</p>
+
+      <h2 id="android" class="text-3xl font-bold text-black mb-6">Android</h2>
+      <ol class="space-y-6 list-none p-0 mb-6">
+        <li class="flex gap-4">
+          <span class="flex-shrink-0 w-10 h-10 rounded-full bg-black text-white font-bold flex items-center justify-center" aria-hidden="true">1</span>
+          <div>Open <strong>howgodspeakstous.com</strong> in <strong>Chrome</strong>.</div>
+        </li>
+        <li class="flex gap-4">
+          <span class="flex-shrink-0 w-10 h-10 rounded-full bg-black text-white font-bold flex items-center justify-center" aria-hidden="true">2</span>
+          <div>Tap the <strong>menu</strong> button <Fragment set:html={menuIcon} /> (three dots) in the top-right corner.</div>
+        </li>
+        <li class="flex gap-4">
+          <span class="flex-shrink-0 w-10 h-10 rounded-full bg-black text-white font-bold flex items-center justify-center" aria-hidden="true">3</span>
+          <div>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</div>
+        </li>
+        <li class="flex gap-4">
+          <span class="flex-shrink-0 w-10 h-10 rounded-full bg-black text-white font-bold flex items-center justify-center" aria-hidden="true">4</span>
+          <div>Tap <strong>Install</strong> to confirm. The icon will appear on your home screen.</div>
+        </li>
+      </ol>
+
+      <div class="mt-10" data-install-ui>
+        <button
+          type="button"
+          id="install-now"
+          class="hidden px-6 py-3 bg-black text-white text-lg font-semibold rounded hover:bg-gray-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+        >
+          Install now
+        </button>
+      </div>
+
+      <h2 class="text-3xl font-bold text-black mt-14 mb-4">Good to know</h2>
+      <ul class="list-disc pl-6 space-y-3">
+        <li>The app shows the newest verse whenever you're connected to the internet.</li>
+        <li>Pages you've already opened can be read without internet.</li>
+        <li>To remove it, press and hold the icon, then choose <strong>Remove</strong> or <strong>Uninstall</strong>.</li>
+      </ul>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // In the installed app, say so. On Chrome/Android, offer a one-tap install.
+  if (document.documentElement.classList.contains('is-standalone')) {
+    document.getElementById('install-already')?.classList.remove('hidden');
+  }
+
+  type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<unknown> };
+  const installNow = document.getElementById('install-now');
+  let deferredPrompt: InstallPromptEvent | null = null;
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredPrompt = event as InstallPromptEvent;
+    installNow?.classList.remove('hidden');
+  });
+
+  installNow?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    await deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    installNow.classList.add('hidden');
+  });
+
+  window.addEventListener('appinstalled', () => installNow?.classList.add('hidden'));
+</script>

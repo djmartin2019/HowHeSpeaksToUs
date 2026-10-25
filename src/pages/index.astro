@@ -11,6 +11,7 @@ import {
 } from '../lib/content-catalog';
 import { renderRichText } from '../lib/rich-text-renderer';
 import { seoConfig } from '../config/seo';
+import { todayInSiteTz } from '../lib/dates';
 
 // Fetch recent blog posts for the homepage
 let recentPosts = [];
@@ -32,7 +33,7 @@ try {
 let todayVerse = null;
 let verseHtml = '';
 let verseDateString = null;
-const todayDate = new Date().toISOString().split('T')[0];
+const todayDate = todayInSiteTz();
 let recentVersesItems: any[] = [];
 
 try {
