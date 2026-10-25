@@ -46,6 +46,39 @@
     display: none !important;
   }
 
+  /*
+   * Installed app only. There is no browser toolbar, so the navbar has to stay
+   * on screen while scrolling, or there's no way to reach the menu. In a
+   * browser tab the navbar keeps its normal look and scrolls with the page.
+   */
+  .is-standalone .app-nav {
+    position: fixed;
+    background-color: #000;
+  }
+  /* Breadcrumb bars on blog posts, daily verses and resources. */
+  .is-standalone .app-nav-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  /* The navbar grows by the status bar height (pt-safe), so push hero text
+     down by the same amount to keep the usual gap under the navbar. */
+  .is-standalone .hero-safe {
+    padding-top: calc(8rem + env(safe-area-inset-top));
+  }
+  /* Keep #anchor jumps from landing under the pinned navbar. */
+  .is-standalone {
+    scroll-padding-top: calc(4rem + env(safe-area-inset-top));
+  }
+  @media (min-width: 768px) {
+    .is-standalone .hero-safe {
+      padding-top: calc(10rem + env(safe-area-inset-top));
+    }
+    .is-standalone {
+      scroll-padding-top: calc(5rem + env(safe-area-inset-top));
+    }
+  }
+
   /* Custom utility classes can go here */
   .text-balance {
     text-wrap: balance;
