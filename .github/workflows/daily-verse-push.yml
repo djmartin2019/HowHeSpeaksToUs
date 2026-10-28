@@ -2,8 +2,11 @@
 #
 # GitHub schedules use UTC and Chicago changes clocks twice a year, so this runs
 # at both 12:00 UTC (7am CDT) and 13:00 UTC (7am CST). The script sends only
-# between 7 and 11am Chicago time and only once per day. GitHub may start
-# scheduled runs a few minutes late.
+# between 7 and 11am Chicago time and only once per day.
+#
+# GitHub often starts scheduled runs hours late, so the Cloudflare Worker in
+# workers/scheduler/ starts this workflow (workflow_dispatch) at those times.
+# The schedule below is a backup.
 #
 # To test: Actions > Daily verse notification > Run workflow, with "force" checked.
 #

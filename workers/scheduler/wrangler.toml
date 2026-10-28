@@ -1,0 +1,20 @@
+# Scheduler Worker: see src/index.js and README.md in this folder.
+name = "howgodspeakstous-scheduler"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# No public URL; this Worker only runs on a schedule.
+workers_dev = false
+preview_urls = false
+
+[triggers]
+# Times are UTC. Keep these in sync with the cron strings in src/index.js.
+crons = ["10 6 * * *", "0 12 * * *", "0 13 * * *"]
+
+[vars]
+GITHUB_REPO = "djmartin2019/HowHeSpeaksToUs"
+GITHUB_BRANCH = "main"
+PUSH_WORKFLOW = "daily-verse-push.yml"
+
+[observability]
+enabled = true

@@ -43,11 +43,11 @@ Most readers are church members reading on their phones, many of them not techni
                               ▼                               ▼
   GitHub push to main ─► ┌──────────────────────────────────────────────┐
   Daily rebuild 12:10am ─►│ Cloudflare Pages: `astro build` → static site │
-  (GitHub Action)        └──────────────────────┬───────────────────────┘
+  (scheduler Worker)     └──────────────────────┬───────────────────────┘
                                                 ▼
                          howgodspeakstous.com  (HTML + service worker)
 
-  Daily verse notification (GitHub Action, 7am Chicago)
+  Daily verse notification (scheduler Worker starts a GitHub Action, 7am Chicago)
     Contentful (today's verse?) + Cloudflare KV (sign-ups) ─► push to phones
 ```
 
@@ -60,7 +60,7 @@ Most readers are church members reading on their phones, many of them not techni
 
 1. **Publishing in Contentful.** A Contentful webhook calls `functions/api/contentful-webhook.js`, which calls the Cloudflare deploy hook.
 2. **Pushing to `main`** on GitHub.
-3. **Every night at 12:10am Chicago time.** `.github/workflows/daily-rebuild.yml` rebuilds so the homepage switches to the new day's verse even when nothing was published.
+3. **Every night at 12:10am Chicago time.** The scheduler Worker (`workers/scheduler/`) calls the deploy hook so the homepage switches to the new day's verse even when nothing was published. `.github/workflows/daily-rebuild.yml` does the same on GitHub's schedule as a backup.
 
 ### What "today" means
 
@@ -113,7 +113,7 @@ The app is built with [`@vite-pwa/astro`](https://vite-pwa-org.netlify.app/frame
 Phone taps "Get the daily verse each morning"
   └─► POST /api/push/subscribe ─► Cloudflare KV (PUSH_SUBSCRIPTIONS)
 
-GitHub Action at 12:00 and 13:00 UTC
+Scheduler Worker at 12:00 and 13:00 UTC starts the GitHub Action
   └─► scripts/send-daily-push.mjs
         ├─ only between 7–11am Chicago time, and only once per day (KV key meta:last-sent)
         ├─ looks up today's verse in Contentful; none → sends nothing
@@ -126,7 +126,11 @@ Phone's service worker shows "Today's Verse — <passage>: <verse>"
 
 ### Why two runs
 
-GitHub schedules run in UTC, and Chicago changes clocks twice a year, so the job runs at both 7am CDT and 7am CST. The script makes sure exactly one of them sends.
+Schedules run in UTC, and Chicago changes clocks twice a year, so the job runs at both 7am CDT and 7am CST. The script makes sure exactly one of them sends.
+
+### Why a Cloudflare Worker starts it
+
+GitHub starts scheduled workflows whenever it has capacity, which in practice was 5–6 hours late. The script then skipped, since it was past 11am. Runs started through GitHub's API begin right away, so `workers/scheduler/` (a Cloudflare cron trigger) starts the workflow on time. The workflow's own GitHub schedule stays as a backup. Setup steps: [workers/scheduler/README.md](workers/scheduler/README.md).
 
 ### Files
 
@@ -136,7 +140,8 @@ GitHub schedules run in UTC, and Chicago changes clocks twice a year, so the job
 | `functions/api/push/[action].js` | Saves (`subscribe`) or removes (`unsubscribe`) sign-ups in KV |
 | `src/sw.ts` (bottom) | Shows the notification and opens the verse page when it's tapped |
 | `scripts/send-daily-push.mjs` | The morning send |
-| `.github/workflows/daily-verse-push.yml` | Runs the morning send on a schedule |
+| `.github/workflows/daily-verse-push.yml` | Runs the morning send |
+| `workers/scheduler/` | Starts the morning send (and the nightly rebuild) on time |
 | `src/config/push.mjs` | Public notification key, contact email, API paths |
 
 ### The sign-up button's states
@@ -213,11 +218,20 @@ npm run dev             # http://localhost:4321
 | `CONTENTFUL_WEBHOOK_SECRET` | Environment variable (optional) | Verifies the Contentful webhook signature, if set |
 | `PUSH_SUBSCRIPTIONS` | **KV namespace binding** | `functions/api/push/[action].js` |
 
+### Scheduler Worker (`howgodspeakstous-scheduler`)
+
+| Secret | Used for |
+| --- | --- |
+| `DEPLOY_HOOK_URL` | The nightly rebuild |
+| `GITHUB_TOKEN` | Starting the notification workflow (fine-grained token, this repo only, **Actions: Read and write**) |
+
+Set with `npx wrangler@4 secret put <NAME>` from `workers/scheduler/`.
+
 ### GitHub Actions secrets
 
 | Secret | Used by |
 | --- | --- |
-| `CLOUDFLARE_DEPLOY_HOOK_URL` | Daily rebuild |
+| `CLOUDFLARE_DEPLOY_HOOK_URL` | Daily rebuild (backup schedule) |
 | `VAPID_PRIVATE_KEY` | Daily verse notification |
 | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_KV_NAMESPACE_ID`, `CLOUDFLARE_API_TOKEN` | Daily verse notification (reading and cleaning up sign-ups; the token needs **Workers KV Storage: Edit**) |
 | `CONTENTFUL_SPACE_ID`, `CONTENTFUL_DELIVERY_TOKEN` | Daily verse notification (looking up today's verse) |
@@ -243,11 +257,11 @@ Never paste several `gh secret set` commands on one line.
 
 **Send a test notification.** GitHub → **Actions** → **Daily verse notification** → **Run workflow**, with **force** checked. This sends today's verse to everyone signed up, so only do it while the only sign-ups are your own. Tick **dry run** to check everything without sending. A forced run doesn't count as the morning send.
 
-**Change the notification time.** Edit `SEND_FROM_HOUR` and `SEND_UNTIL_HOUR` in `scripts/send-daily-push.mjs`, and the two `cron` lines in `.github/workflows/daily-verse-push.yml` (in UTC: one for CDT, one for CST). Also update the "7am Central" wording in `PushSignup.astro`, `install.astro` and `about.astro`.
+**Change the notification time.** Edit `SEND_FROM_HOUR` and `SEND_UNTIL_HOUR` in `scripts/send-daily-push.mjs`, the two push times in `workers/scheduler/wrangler.toml` and `workers/scheduler/src/index.js` (then `npx wrangler@4 deploy`), and the two `cron` lines in `.github/workflows/daily-verse-push.yml` (all in UTC: one for CDT, one for CST). Also update the "7am Central" wording in `PushSignup.astro`, `install.astro` and `about.astro`.
 
-**If the homepage verse didn't change today:** Check GitHub → **Actions** → **Daily rebuild**. GitHub **pauses scheduled workflows after 60 days without repository activity**; re-enable it from that page.
+**If the homepage verse didn't change today:** Check the scheduler Worker's logs in Cloudflare (**Workers & Pages** → **howgodspeakstous-scheduler** → **Logs**), then Cloudflare Pages → **Deployments**. The GitHub backup is under **Actions** → **Daily rebuild**; GitHub **pauses scheduled workflows after 60 days without repository activity**.
 
-**If notifications didn't arrive:** Open the latest **Daily verse notification** run. The last line reads `Sent: N. Removed expired: N. Failed: N.`
+**If notifications didn't arrive:** Open the latest **Daily verse notification** run. If there's no `workflow_dispatch` run near 12:00/13:00 UTC, check the scheduler Worker's logs; "HTTP 401" means its GitHub token expired. The last line reads `Sent: N. Removed expired: N. Failed: N.`
 
 - "Missing required environment variable" means a GitHub secret is missing or empty.
 - "No daily verse for …" means no verse is dated today in Contentful.
@@ -262,6 +276,7 @@ Never paste several `gh secret set` commands on one line.
 .github/workflows/      daily-rebuild.yml, daily-verse-push.yml
 functions/api/          Cloudflare Pages Functions: contact.js, contentful-webhook.js, push/[action].js
 scripts/                send-daily-push.mjs
+workers/scheduler/      Cloudflare Worker that starts the daily jobs on time
 public/                 icons, robots.txt, js/ (tag filtering + pagination for list pages)
 src/
   components/           Nav, Seo, PwaHead, UpdateToast, InstallPrompt, PushSignup
@@ -275,7 +290,7 @@ src/
 docs/                   development plans for the PWA and notifications
 ```
 
-**Tech:** Astro 4 · TypeScript · Tailwind CSS · Contentful · Cloudflare Pages + Pages Functions + Workers KV · Workbox · Web Push (`web-push`) · Resend · GitHub Actions
+**Tech:** Astro 4 · TypeScript · Tailwind CSS · Contentful · Cloudflare Pages + Pages Functions + Workers KV · Workbox · Web Push (`web-push`) · Resend · GitHub Actions · Cloudflare Workers (cron triggers)
 
 ---
 

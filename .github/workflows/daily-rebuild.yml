@@ -1,6 +1,10 @@
 # Rebuild the site once a day so the homepage "Verse of the Day" changes
 # even when nothing was published in Contentful.
 #
+# The Cloudflare Worker in workers/scheduler/ does this on time; GitHub often
+# starts scheduled runs hours late. This workflow is a backup and a manual
+# "rebuild now" button (Actions > Daily rebuild > Run workflow).
+#
 # Setup: add the Cloudflare Pages deploy hook URL as a repository secret
 # named CLOUDFLARE_DEPLOY_HOOK_URL (Settings > Secrets and variables > Actions).
 #
